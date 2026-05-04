@@ -16,6 +16,12 @@
 <br>
 
 <div align="center">
+  <img src="https://img.shields.io/badge/status-beta-FF8C00?style=for-the-badge&labelColor=555555" alt="Status: Beta" />
+</div>
+
+<br>
+
+<div align="center">
   <img src="https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white" alt=".NET 10" />
   <img src="https://img.shields.io/badge/license-AGPL--3.0-green" alt="GNU AGPL-3.0 License" />
   <img src="https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white" alt="Docker" />
@@ -204,6 +210,9 @@ Settings load from `~/.openmono/settings.json` (user-level) or `.openmono/settin
 - The agent goes to max 25 iterations at the moment which is configured in [ConversationLoop.cs Line 149](https://github.com/StartupHakk/OpenMonoAgent.ai/blob/9b6e95b037c163cfab017f244b09e104f1e7e6a8/src/OpenMono.Cli/Session/ConversationLoop.cs#L149)
 The team is currently working on a fix for it, but increasing this number to a very big value may lead to delayed responses and context window getting filled quickly.
 ---
+
+> [!NOTE]
+> OpenMono is in **Public Beta**. Early access is open, and we're shipping updates fast. Try it out and tell us what you'd like to see next.
 
 ## Contributing
 
