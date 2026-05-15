@@ -168,6 +168,39 @@ public sealed class AcpSessionStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task Concurrent_Save_on_same_session_does_not_corrupt_disk()
+    {
+        using var store = new AcpSessionStore(_cfg, _settings, startReaper: false);
+        var session = store.Create("gpt-4o", null, _cfg);
+
+        var t1 = Task.Run(() =>
+        {
+            for (var i = 0; i < 100; i++)
+            {
+                session.TurnCount = i;
+                store.Save(session);
+            }
+        });
+        var t2 = Task.Run(() =>
+        {
+            for (var i = 0; i < 100; i++)
+            {
+                session.LastActivityAt = DateTime.UtcNow;
+                store.Save(session);
+            }
+        });
+        await Task.WhenAll(t1, t2);
+
+        var path = Path.Combine(_tempDir, "acp-sessions", session.Id + ".json");
+        File.Exists(path).Should().BeTrue();
+        var json = File.ReadAllText(path);
+        json.Should().StartWith("{").And.EndWith("}", because: "atomic save must produce a valid JSON document at every observable point");
+
+        using var reloaded = new AcpSessionStore(_cfg, _settings, startReaper: false);
+        reloaded.TryGet(session.Id).Should().NotBeNull();
+    }
+
+    [Fact]
     public void Delete_removes_session_from_memory_and_disk()
     {
         using var store = new AcpSessionStore(_cfg, _settings, startReaper: false);
