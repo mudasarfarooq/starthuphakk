@@ -130,22 +130,25 @@ check_prerequisites() {
     local missing=()
     local warnings=()
 
-    # Required commands
-    command -v docker &>/dev/null || missing+=("docker")
+    # Required commands (unconditional)
     command -v git &>/dev/null || missing+=("git")
     command -v curl &>/dev/null || missing+=("curl")
-    command -v cmake &>/dev/null || missing+=("cmake")
+    command -v jq &>/dev/null || missing+=("jq")
 
-    # Docker Compose (check hyphenated version on macOS, space-separated on Linux)
-    if ! docker-compose --version &>/dev/null 2>&1 && ! docker compose --version &>/dev/null 2>&1; then
-        missing+=("docker-compose")
-    fi
-
-    # Check if user can run docker
-    if command -v docker &>/dev/null; then
-        if ! docker info &>/dev/null 2>&1; then
+    # Docker/Docker Compose only needed for full and agent roles (not inference)
+    if [ "$OPENMONO_ROLE" != "inference" ]; then
+        command -v docker &>/dev/null || missing+=("docker")
+        if ! docker-compose --version &>/dev/null 2>&1 && ! docker compose --version &>/dev/null 2>&1; then
+            missing+=("docker-compose")
+        fi
+        if command -v docker &>/dev/null && ! docker info &>/dev/null 2>&1; then
             warnings+=("Docker is installed but not accessible. Try: sudo systemctl restart docker (or restart Docker Desktop)")
         fi
+    fi
+
+    # cmake only needed for inference role
+    if [ "$OPENMONO_ROLE" != "agent" ]; then
+        command -v cmake &>/dev/null || missing+=("cmake")
     fi
 
     # .NET SDK (optional but recommended)
