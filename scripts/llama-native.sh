@@ -24,6 +24,7 @@ _native_load_config() {
     LLAMA_NATIVE_PORT=$(jq -r '.inference.port // "7474"' "$settings" 2>/dev/null)
     LLAMA_INSTALL_DIR=$(jq -r '.inference.install_dir // empty' "$settings" 2>/dev/null)
     LLAMA_API_KEY=$(jq -r '.inference.api_key // empty' "$settings" 2>/dev/null)
+    LLAMA_MMPROJ_PATH=$(jq -r '.inference.mmproj_path // empty' "$settings" 2>/dev/null)
     LLAMA_INSTALL_DIR="${LLAMA_INSTALL_DIR:-$HOME/openmono.ai}"
     if [[ -z "$MODEL_NAME" ]]; then
         err "inference config not found in $settings"; err "Re-run: openmono setup"; return 1
@@ -64,6 +65,7 @@ _native_start_llama() {
         --cache-type-k q8_0 --cache-type-v q8_0 \
         --parallel 1 --jinja --reasoning off --metrics \
         ${api_key:+--api-key "${api_key}"} \
+        ${LLAMA_MMPROJ_PATH:+--mmproj "${LLAMA_MMPROJ_PATH}" --image-min-tokens 1024 --image-max-tokens 1280} \
         > "$log_file" 2>&1 &
     local pid=$!
     disown $pid
@@ -196,6 +198,11 @@ native_cmd_status() {
     printf "│ Port            : %s\n" "$port"
     printf "│ Model           : %s\n" "$MODEL_NAME"
     printf "│ Context Size    : %s\n" "$LLAMA_CTX_SIZE"
+    if [[ -n "$LLAMA_MMPROJ_PATH" ]]; then
+        printf "│ Vision          : ${GREEN}enabled${NC} (%s)\n" "$(basename "$LLAMA_MMPROJ_PATH")"
+    else
+        printf "│ Vision          : disabled\n"
+    fi
 
     # Health check
     if curl -sf "http://localhost:${port}/health" &>/dev/null; then

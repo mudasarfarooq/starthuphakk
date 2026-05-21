@@ -19,6 +19,15 @@ INSTALL_DIR="$(dirname "$SCRIPT_DIR")"  # repo root (parent of scripts/)
 # shellcheck source=lib/log.sh
 source "$SCRIPT_DIR/lib/log.sh"
 
+# ── Context size presets (tokens) — edit here to change globally ──────────────
+CTX_48G=196608       # >=48 GB Metal  q8_0 KV
+CTX_32G=65536        # 32 GB Metal
+CTX_16G=16384        # 16 GB Metal
+CTX_8G=8192          # <16 GB Metal
+CTX_VISION=172032    # >=48 GB + mmproj  (encoder needs ~474 MiB burst)
+CTX_VISION_32G=49152 # 32 GB + mmproj   (~25% reduction)
+CTX_VISION_16G=12288 # 16 GB + mmproj   (~25% reduction)
+
 # Selects the right model for the host's Apple Silicon unified memory tier.
 # Arg $1: host RAM in GB (integer). Sets MODEL_NAME, MODEL_URL, MODEL_ACCURACY,
 # MODEL_ALIAS, _MODEL_LABEL, _CTX_SIZE.
@@ -34,28 +43,36 @@ select_model() {
         MODEL_NAME="Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf"
         MODEL_URL="https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/resolve/main/Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf"
         MODEL_ACCURACY="standard"
+        MODEL_MMPROJ="mmproj-F16.gguf"
+        MODEL_MMPROJ_URL="https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/resolve/main/mmproj-F16.gguf"
         _MODEL_LABEL="Qwen3.6-35B-A3B (~17.6GB) [Apple Silicon >=48GB — standard]"
-        _CTX_SIZE=196608
+        _CTX_SIZE=$CTX_48G
     elif [ "$ram_gb" -ge 32 ]; then
         # ~12 GB weights + ~6.5 GB KV + ~6 GB OS ≈ 24.5 GB on 32 GB Mac
         MODEL_NAME="Qwen3.6-27B-UD-IQ3_XXS.gguf"
         MODEL_URL="https://huggingface.co/unsloth/Qwen3.6-27B-GGUF/resolve/main/Qwen3.6-27B-UD-IQ3_XXS.gguf"
         MODEL_ACCURACY="lower"
+        MODEL_MMPROJ="mmproj-F16.gguf"
+        MODEL_MMPROJ_URL="https://huggingface.co/unsloth/Qwen3.6-27B-GGUF/resolve/main/mmproj-F16.gguf"
         _MODEL_LABEL="Qwen3.6-27B-UD-IQ3_XXS (~12GB) [Apple Silicon 32GB — lower accuracy]"
-        _CTX_SIZE=65536
+        _CTX_SIZE=$CTX_32G
     elif [ "$ram_gb" -ge 16 ]; then
         # ~5 GB weights + ~1.1 GB KV + ~6 GB OS ≈ 12 GB on 16 GB Mac
         MODEL_NAME="Qwen3.5-9B-Q4_K_M.gguf"
         MODEL_URL="https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/main/Qwen3.5-9B-Q4_K_M.gguf"
         MODEL_ACCURACY="lower"
+        MODEL_MMPROJ="mmproj-F16.gguf"
+        MODEL_MMPROJ_URL="https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/main/mmproj-F16.gguf"
         _MODEL_LABEL="Qwen3.5-9B-Q4_K_M (~5GB) [Apple Silicon 16GB — lower accuracy]"
-        _CTX_SIZE=16384
+        _CTX_SIZE=$CTX_16G
     else
         MODEL_NAME="Qwen3.5-9B-Q4_K_M.gguf"
         MODEL_URL="https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/main/Qwen3.5-9B-Q4_K_M.gguf"
         MODEL_ACCURACY="lower"
+        MODEL_MMPROJ=""
+        MODEL_MMPROJ_URL=""
         _MODEL_LABEL="Qwen3.5-9B-Q4_K_M (~5GB) [Apple Silicon <16GB]"
-        _CTX_SIZE=8192
+        _CTX_SIZE=$CTX_8G
     fi
     MODEL_ALIAS="${MODEL_NAME%.gguf}"
 }
@@ -197,6 +214,15 @@ if [ "$OPENMONO_ROLE" != "agent" ]; then
 Upgrade to a Mac with at least 16GB, or use the 'agent' role and connect to a separate inference server."
     fi
     select_model "$TOTAL_MEM"
+
+    # Reduce context when mmproj is active (encoder needs ~1-2 GB burst)
+    if [ -n "${MODEL_MMPROJ:-}" ]; then
+        _CTX_ORIG=$_CTX_SIZE
+        if   [ "$TOTAL_MEM" -ge 48 ]; then _CTX_SIZE=$CTX_VISION
+        elif [ "$TOTAL_MEM" -ge 32 ]; then _CTX_SIZE=$CTX_VISION_32G
+        else                                _CTX_SIZE=$CTX_VISION_16G; fi
+        detail "Vision enabled: context reduced from $((_CTX_ORIG/1024))k → $((_CTX_SIZE/1024))k to fit mmproj"
+    fi
     ok "Apple Silicon ${TOTAL_MEM}GB → $_MODEL_LABEL (ctx: $_CTX_SIZE)"
 fi
 
@@ -287,6 +313,28 @@ if [ "$OPENMONO_ROLE" != "agent" ]; then
         fi
 
         ok "Model downloaded ($(du -h "$MODEL_FILE" | awk '{print $1}'))"
+    fi
+
+    # ── mmproj (vision projector) ─────────────────────────────────────────────
+    if [ -z "${MODEL_MMPROJ:-}" ]; then
+        info "No mmproj configured for this model — vision disabled"
+    else
+        MMPROJ_FILE="$MODEL_DIR/$MODEL_MMPROJ"
+        MMPROJ_MIN_BYTES=$((100 * 1024 * 1024))
+        if [ -f "$MMPROJ_FILE" ] && [ "$(stat -f%z "$MMPROJ_FILE" 2>/dev/null || echo 0)" -gt "$MMPROJ_MIN_BYTES" ]; then
+            ok "mmproj already present ($(du -h "$MMPROJ_FILE" | awk '{print $1}'))"
+        else
+            [ -f "$MMPROJ_FILE" ] && { warn "Existing mmproj incomplete — removing"; rm -f "$MMPROJ_FILE"; }
+            info "Downloading mmproj: $MODEL_MMPROJ (~900 MB)"
+            if ! run_live curl -L --fail --progress-bar -o "$MMPROJ_FILE" "$MODEL_MMPROJ_URL"; then
+                rm -f "$MMPROJ_FILE"
+                warn "mmproj download failed — vision will be unavailable"
+                MODEL_MMPROJ=""
+                MMPROJ_FILE=""
+            else
+                ok "mmproj downloaded ($(du -h "$MMPROJ_FILE" | awk '{print $1}'))"
+            fi
+        fi
     fi
 fi
 
@@ -396,9 +444,10 @@ if [ "$OPENMONO_ROLE" != "agent" ]; then
         "$MODEL_ALIAS" \
         "$_CTX_SIZE" \
         "$INSTALL_DIR" \
-        "$LLAMA_API_KEY" <<'PYEOF'
+        "$LLAMA_API_KEY" \
+        "${MMPROJ_FILE:-}" <<'PYEOF'
 import json, sys
-path, port, model_name, model_alias, ctx_size, install_dir, api_key = sys.argv[1:8]
+path, port, model_name, model_alias, ctx_size, install_dir, api_key, mmproj_path = sys.argv[1:9]
 with open(path) as f:
     cfg = json.load(f)
 cfg.setdefault("llm", {})["endpoint"] = f"http://host.docker.internal:{port}"
@@ -409,7 +458,8 @@ cfg["inference"] = {
     "model_alias": model_alias,
     "ctx_size": int(ctx_size),
     "port": int(port),
-    "install_dir": install_dir
+    "install_dir": install_dir,
+    "mmproj_path": mmproj_path if mmproj_path else ""
 }
 with open(path, "w") as f:
     json.dump(cfg, f, indent=2)
@@ -419,6 +469,16 @@ PYEOF
     detail "  ctx_size  : $_CTX_SIZE"
     detail "  endpoint  : http://host.docker.internal:${LLAMA_PORT:-7474}"
     detail "  api_key   : [generated, stored in docker/.env]"
+
+    # Update docker/.env with model and vision state
+    grep -v -E "^MODEL_MMPROJ=|^OPENMONO_VISION_ENABLED=" "$ENV_FILE" > /tmp/env.tmp 2>/dev/null || true
+    mv /tmp/env.tmp "$ENV_FILE"
+    printf "MODEL_MMPROJ=%s\n" "${MODEL_MMPROJ:-}" >> "$ENV_FILE"
+    if [ -n "${MODEL_MMPROJ:-}" ]; then
+        printf "OPENMONO_VISION_ENABLED=1\n" >> "$ENV_FILE"
+    else
+        printf "OPENMONO_VISION_ENABLED=0\n" >> "$ENV_FILE"
+    fi
 fi
 
 # ── Step 7: Build Docker images ────────────────────────────────────────────────
@@ -490,11 +550,17 @@ case "$OPENMONO_ROLE" in
         echo "  llama-server port : ${LLAMA_PORT:-7474}"
         echo "  mode              : Metal GPU (native llama.cpp)"
         echo "  model             : ${MODEL_NAME:-}"
+        if [ -n "${MODEL_MMPROJ:-}" ]; then
+            echo "  vision            : enabled (mmproj-F16.gguf)"
+        fi
         ;;
     inference)
         echo "  llama-server port : ${LLAMA_PORT:-7474}"
         echo "  mode              : Metal GPU (native llama.cpp)"
         echo "  model             : ${MODEL_NAME:-}"
+        if [ -n "${MODEL_MMPROJ:-}" ]; then
+            echo "  vision            : enabled (mmproj-F16.gguf)"
+        fi
         ;;
     agent)
         echo "  role              : Agent only (dual-box mode)"
@@ -502,6 +568,23 @@ case "$OPENMONO_ROLE" in
 esac
 echo ""
 show_log_location
+
+# Vision usage info (if enabled)
+if [ "${OPENMONO_ROLE}" != "agent" ] && [ -n "${MODEL_MMPROJ:-}" ]; then
+    echo ""
+    printf "${BOLD}${CYAN}Vision (LLaVA) — Enabled${NC}\n"
+    printf "  ${DIM}Vision encoder (mmproj) loaded with the model (~1-2 GB unified memory)${NC}\n"
+    printf "  ${DIM}Context: reduced $((_CTX_ORIG/1024))k → $((_CTX_SIZE/1024))k to fit encoder burst${NC}\n"
+    printf "\n"
+    printf "  ${DIM}Usage: type @image.png or @screenshot.png in chat${NC}\n"
+    printf "  ${DIM}  Examples:${NC}\n"
+    printf "     @screenshot.png what's on my screen?\n"
+    printf "     @diagram.png explain this diagram\n"
+    printf "\n"
+    printf "  ${DIM}To disable: delete the mmproj file and re-run openmono setup${NC}\n"
+    printf "     rm ~/openmono.ai/models/mmproj-F16.gguf${NC}\n"
+    echo ""
+fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 # The shell restart and docker group activation is handled by openmono cmd_setup
