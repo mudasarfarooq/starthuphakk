@@ -101,6 +101,5 @@ macos_tunnel_cmd_status() {
 
 macos_tunnel_cmd_logs() {
     info "Streaming frpc logs (press Ctrl+C to stop)..."
-    log stream --predicate 'process=="frpc"' --level debug 2>/dev/null \
-        || log stream --predicate 'process=="frpc"' --level debug
+    log stream --predicate 'process=="frpc"' --level debug
 }
