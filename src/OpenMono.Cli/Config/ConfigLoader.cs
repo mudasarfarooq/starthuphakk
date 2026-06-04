@@ -61,6 +61,7 @@ public static class ConfigLoader
             if (overrides is null) return;
 
             config.Llm.MergeFrom(overrides.Llm);
+            config.Web.MergeFrom(overrides.Web);
 
             foreach (var (tool, rules) in overrides.Permissions.Tools)
             {
@@ -122,6 +123,18 @@ public static class ConfigLoader
         var apiKey = Environment.GetEnvironmentVariable("OPENMONO_API_KEY");
         if (!string.IsNullOrEmpty(apiKey))
             config.Llm.ApiKey = apiKey;
+
+        var webGateway = Environment.GetEnvironmentVariable("OPENMONO_WEB_GATEWAY");
+        if (!string.IsNullOrEmpty(webGateway))
+            config.Web.Gateway = webGateway;
+
+        var webSearch = Environment.GetEnvironmentVariable("OPENMONO_WEB_SEARCH");
+        if (!string.IsNullOrEmpty(webSearch))
+            config.Web.Search = webSearch;
+
+        var webScrape = Environment.GetEnvironmentVariable("OPENMONO_WEB_SCRAPE");
+        if (!string.IsNullOrEmpty(webScrape))
+            config.Web.Scrape = webScrape;
 
         var workspace = Environment.GetEnvironmentVariable("OPENMONO_WORKSPACE");
         if (!string.IsNullOrEmpty(workspace))

@@ -1,4 +1,6 @@
 using System.Net;
+using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using OpenMono.Permissions;
@@ -33,6 +35,13 @@ public sealed partial class WebFetchTool : ToolBase
         }
     };
 
+    // Scrapling can drive a real browser (Cloudflare/CAPTCHA bypass), so give the
+    // gateway path a longer ceiling than a plain HTTP fetch.
+    private static readonly HttpClient ScrapeHttp = new()
+    {
+        Timeout = TimeSpan.FromSeconds(90),
+    };
+
     public IReadOnlyList<Capability> RequiredCapabilities(JsonElement input)
     {
         var url = input.TryGetProperty("url", out var u) ? u.GetString() : null;
@@ -50,6 +59,66 @@ public sealed partial class WebFetchTool : ToolBase
             (uri.Scheme != "http" && uri.Scheme != "https"))
             return ToolResult.Error($"Invalid URL: {url}");
 
+        // Prefer self-hosted Scrapling behind the gateway when configured.
+        // ScrapeEnabled == false means the service isn't installed → skip it.
+        var web = context.Config.Web;
+        if (!string.IsNullOrEmpty(web.Gateway) && web.ScrapeEnabled != false)
+        {
+            try
+            {
+                return await ScraplingFetchAsync(web.Gateway!, context.Config.Llm.ApiKey, url, maxLength, ct);
+            }
+            catch (Exception ex)
+            {
+                if (ct.IsCancellationRequested) throw;
+                context.OnDebug?.Invoke($"WebFetch: Scrapling gateway unavailable ({ex.Message}); falling back to direct fetch");
+            }
+        }
+
+        return await DirectFetchAsync(uri, url, input, maxLength, ct);
+    }
+
+    private static async Task<ToolResult> ScraplingFetchAsync(
+        string gateway, string? apiKey, string url, int maxLength, CancellationToken ct)
+    {
+        var payload = JsonSerializer.Serialize(new
+        {
+            url,
+            max_length = maxLength,
+            format = "markdown",
+        });
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{gateway.TrimEnd('/')}/scrape")
+        {
+            Content = new StringContent(payload, Encoding.UTF8, "application/json"),
+        };
+        if (!string.IsNullOrEmpty(apiKey))
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+        using var response = await ScrapeHttp.SendAsync(request, ct);
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync(ct);
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        var status = root.TryGetProperty("status", out var s) && s.ValueKind == JsonValueKind.Number
+            ? s.GetInt32() : 200;
+
+        // The scraper reports an upstream/transport failure — let the caller fall back.
+        if (root.TryGetProperty("error", out var errEl) && errEl.ValueKind == JsonValueKind.String)
+            throw new HttpRequestException($"scrape error: {errEl.GetString()}");
+
+        var content = root.TryGetProperty("content", out var c) ? c.GetString() ?? "" : "";
+        if (content.Length > maxLength)
+            content = content[..maxLength] + $"\n\n... (truncated at {maxLength} chars)";
+
+        return ToolResult.Success($"[{status}] {url} ({content.Length} chars)\n\n{content}");
+    }
+
+    private static async Task<ToolResult> DirectFetchAsync(
+        Uri uri, string url, JsonElement input, int maxLength, CancellationToken ct)
+    {
         try
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, uri);

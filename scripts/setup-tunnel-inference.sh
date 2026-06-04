@@ -17,6 +17,26 @@ RELAY_CACHE="$HOME/.openmono/relay.json"
 API_BASE="https://app.openmonoagent.ai"
 RELAY_PUBLIC_HOST="relay.openmonoagent.ai"
 
+# If the Caddy web gateway is installed, tunnel it instead of llama directly —
+# the single remote port then reaches llama + search + scrape via path routing.
+GATEWAY_PORT="$(grep '^GATEWAY_PORT=' "$ENV_FILE" 2>/dev/null | cut -d= -f2- | tr -d '[:space:]' || true)"
+GATEWAY_PORT="${GATEWAY_PORT:-7480}"
+WEB_ENABLED=false
+if grep -qE '^WEB_(SEARCH|SCRAPE)_ENABLED=true' "$ENV_FILE" 2>/dev/null; then
+    WEB_ENABLED=true
+    TUNNEL_LOCAL_PORT="$GATEWAY_PORT"
+else
+    TUNNEL_LOCAL_PORT=7474
+fi
+
+# Emit the agent-box web-gateway config lines (when the gateway is tunneled).
+print_web_config_lines() {
+    [[ "$WEB_ENABLED" == "true" ]] || return 0
+    echo "  openmono config set web.gateway   http://$RELAY_PUBLIC_HOST:$REMOTE_PORT"
+    grep -qE '^WEB_SEARCH_ENABLED=true' "$ENV_FILE" 2>/dev/null && echo "  openmono config set web.search    true"
+    grep -qE '^WEB_SCRAPE_ENABLED=true' "$ENV_FILE" 2>/dev/null && echo "  openmono config set web.scrape    true"
+}
+
 _SETUP_OS=$(uname -s)
 _SETUP_ARCH=$(uname -m)
 NATIVE_INFERENCE=false
@@ -106,7 +126,7 @@ ${BLUE}ON THE AGENT BOX, run:${NC}
 
   openmono config set llm.endpoint  http://$RELAY_PUBLIC_HOST:$REMOTE_PORT
   openmono config set llm.api_key   $LLAMA_API_KEY
-
+$(print_web_config_lines)
 Then:  openmono agent
 
 ${YELLOW}Relay server:${NC} $FRPS_ADDRESS:$FRPS_PORT
@@ -310,7 +330,7 @@ log.level = "info"
 name              = "${PROXY_PREFIX}llama"
 type              = "tcp"
 localIP           = "127.0.0.1"
-localPort         = 7474
+localPort         = $TUNNEL_LOCAL_PORT
 remotePort        = $REMOTE_PORT
 metadatas.token   = "$RELAY_TOKEN"
 EOF
@@ -463,7 +483,7 @@ ${BLUE}ON THE AGENT BOX, run:${NC}
 
   openmono config set llm.endpoint  http://$RELAY_PUBLIC_HOST:$REMOTE_PORT
   openmono config set llm.api_key   $LLAMA_API_KEY
-
+$(print_web_config_lines)
 Then:  openmono agent
 
 EOF
