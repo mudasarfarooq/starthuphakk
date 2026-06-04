@@ -41,8 +41,13 @@ public static class ConfigLoader
             Directory.CreateDirectory(config.DataDirectory);
             Directory.CreateDirectory(Path.Combine(config.DataDirectory, "sessions"));
             Directory.CreateDirectory(Path.Combine(config.DataDirectory, "memory"));
+            Directory.CreateDirectory(Path.Combine(config.DataDirectory, "artifacts"));
         }
         catch (UnauthorizedAccessException ex)
+        {
+            warn?.Invoke($"Cannot create data directory {config.DataDirectory}: {ex.Message}");
+        }
+        catch (IOException ex)
         {
             warn?.Invoke($"Cannot create data directory {config.DataDirectory}: {ex.Message}");
         }

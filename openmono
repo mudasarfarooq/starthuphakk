@@ -762,6 +762,12 @@ cmd_agent() {
     _ensure_docker
     WORKSPACE="${WORKSPACE:-$(pwd)}"
     export WORKSPACE
+
+    # Ensure ~/.openmono exists and is writable so the bind-mount inside the
+    # container doesn't get created by Docker as root:root (which causes the
+    # UnauthorizedAccessException crash in ArtifactStore).
+    mkdir -p "${HOME}/.openmono"
+
     cd "$DOCKER_DIR"
 
     # Read endpoint and API key from settings

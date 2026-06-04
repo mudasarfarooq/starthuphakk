@@ -14,12 +14,38 @@ public sealed class ArtifactStore : IDisposable
     private readonly int _largeOutputThreshold;
     private readonly ConcurrentDictionary<string, ArtifactMetadata> _artifacts = new();
     private bool _disposed;
+    private readonly bool _fallbackToTemp;
 
     public ArtifactStore(string sessionId, string dataDirectory, int? largeOutputThreshold = null)
     {
-        _artifactDirectory = Path.Combine(dataDirectory, "artifacts", sessionId);
         _largeOutputThreshold = largeOutputThreshold ?? DefaultLargeOutputThreshold;
-        Directory.CreateDirectory(_artifactDirectory);
+        _artifactDirectory = Path.Combine(dataDirectory, "artifacts", sessionId);
+
+        try
+        {
+            Directory.CreateDirectory(_artifactDirectory);
+            _fallbackToTemp = false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // The configured data directory isn't writable (common in Docker
+            // when ~/.openmono is mounted from the host but owned by root or
+            // another user). Fall back to a temp directory so the agent can
+            // still function — artifacts just won't persist across sessions.
+            _fallbackToTemp = true;
+            _artifactDirectory = Path.Combine(
+                Path.GetTempPath(), "openmono", "artifacts", sessionId);
+            Directory.CreateDirectory(_artifactDirectory);
+        }
+        catch (IOException)
+        {
+            // Covers "Permission denied" on Linux when the mount point is
+            // owned by a different UID (e.g. Docker bind-mount created by root).
+            _fallbackToTemp = true;
+            _artifactDirectory = Path.Combine(
+                Path.GetTempPath(), "openmono", "artifacts", sessionId);
+            Directory.CreateDirectory(_artifactDirectory);
+        }
     }
 
     public static ArtifactStore ForSession(SessionState session, string dataDirectory)
@@ -42,7 +68,21 @@ public sealed class ArtifactStore : IDisposable
         var artifactId = GenerateArtifactId(toolName, content);
         var artifactPath = Path.Combine(_artifactDirectory, $"{artifactId}.txt");
 
-        File.WriteAllText(artifactPath, content, Encoding.UTF8);
+        try
+        {
+            File.WriteAllText(artifactPath, content, Encoding.UTF8);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Artifact store directory became unwritable mid-session; return
+            // the original result without persisting — the agent still works.
+            return result;
+        }
+        catch (IOException)
+        {
+            return result;
+        }
+
         var bytes = new FileInfo(artifactPath).Length;
 
         var metadata = new ArtifactMetadata(
