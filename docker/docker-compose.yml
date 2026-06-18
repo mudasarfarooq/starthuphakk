@@ -92,6 +92,7 @@ services:
     restart: always
 
   agent:
+    image: openmono-agent:latest
     build:
       context: ..
       dockerfile: docker/Dockerfile.agent

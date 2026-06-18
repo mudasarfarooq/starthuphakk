@@ -47,7 +47,13 @@ for (var i = 0; i < args.Length; i++)
         case "--classic": useTui = false; break;
         case "--no-acp": noAcp = true; break;
         case "--acp-port" when next is not null && int.TryParse(next, out var p): acpPort = p; i++; break;
-        case "--acp-only": acpOnly = true; break;
+        case "--acp-only":
+        {
+            var (val, consumed) = AcpOnlyArg.Parse(next);
+            acpOnly = val;
+            if (consumed) i++;
+            break;
+        }
         case "--help" or "-h":
             Console.WriteLine("OpenMono.ai — Local Coding Agent");
             Console.WriteLine();
@@ -64,8 +70,9 @@ for (var i = 0; i < args.Length; i++)
             Console.WriteLine("  --classic          Force classic scrolling terminal mode");
             Console.WriteLine("  --no-acp           Force-disable the ACP agent server (overrides config)");
             Console.WriteLine("  --acp-port <n>     ACP server port (default: 7475 or acpServer.Port in config)");
-            Console.WriteLine("  --acp-only         Run the ACP server only — no TUI (forces ACP on; container default)");
-            Console.WriteLine("                     Without --acp-only, ACP stays off unless acpServer.enabled = true in config.");
+            Console.WriteLine("  --acp-only [bool]  Run the ACP server only — no TUI. Bare or `--acp-only true` forces");
+            Console.WriteLine("                     it on (container default); `--acp-only false` runs the interactive TUI.");
+            Console.WriteLine("                     Without the flag, ACP stays off unless acpServer.enabled = true in config.");
             Console.WriteLine("  --help, -h         Show this help message");
             Console.WriteLine("  --version          Show version");
             Console.WriteLine();
@@ -96,7 +103,7 @@ for (var i = 0; i < args.Length; i++)
             Console.WriteLine("  PgUp / PgDn        Scroll conversation");
             return 0;
         case "--version":
-            Console.WriteLine("OpenMono.ai v0.1.0");
+            Console.WriteLine("OpenMono.ai v1.6.0");
             return 0;
     }
 }
@@ -217,6 +224,7 @@ static async Task RunAgentAsync(string? endpoint, string? model, string? workdir
     var acp = config.AcpServer ?? new AcpServerSettings();
     AcpHostedService? acpHost = null;
     CancellationTokenSource? acpCts = null;
+    Exception? acpStartError = null;
 
     if (acpOnly && noAcp)
     {
@@ -251,6 +259,7 @@ static async Task RunAgentAsync(string? endpoint, string? model, string? workdir
 
 
         var runningInDocker = File.Exists("/.dockerenv");
+        acp.BindAllInterfaces = runningInDocker;
 
         Environment.SetEnvironmentVariable("HOST_WORKSPACE_PATH",
             hostWorkspaceExternal ?? config.WorkingDirectory);
@@ -299,8 +308,10 @@ static async Task RunAgentAsync(string? endpoint, string? model, string? workdir
 
 
 
+            acpStartError = ex;
             renderer.WriteWarning($"ACP server failed to start: {ex.Message}");
-            renderer.WriteWarning("Continuing without ACP. Pass --no-acp to silence this on subsequent runs.");
+            if (!acpOnly)
+                renderer.WriteWarning("Continuing without ACP. Pass --no-acp to silence this on subsequent runs.");
             await acpHost.DisposeAsync();
             acpHost = null;
             acpCts.Dispose();
@@ -312,7 +323,7 @@ static async Task RunAgentAsync(string? endpoint, string? model, string? workdir
     {
         if (acpHost is null)
         {
-            renderer.WriteError("--acp-only requires the ACP server, but config.AcpServer.Enabled is false.");
+            renderer.WriteError(AcpStartupError.Message(acp.Port, acpStartError));
             return;
         }
 
