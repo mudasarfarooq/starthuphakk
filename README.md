@@ -10,7 +10,7 @@
 <br>
 
 <div align="center">
-  <a href="#quickstart">Quickstart</a> · <a href="#how-it-compares">How it compares</a> · <a href="#whats-inside">What's inside</a> · <a href="#supported-hardware">Hardware</a> · <a href="#docs">Docs</a> · <a href="ROADMAP.md">Roadmap</a> · <a href="#contributing">Contributing</a>
+  <a href="#quickstart">Quickstart</a> · <a href="#whats-shipping">What's shipping</a> · <a href="#how-it-compares">How it compares</a> · <a href="#whats-inside">What's inside</a> · <a href="#supported-hardware">Hardware</a> · <a href="#docs">Docs</a> · <a href="ROADMAP.md">Roadmap</a> · <a href="#contributing">Contributing</a>
 </div>
 
 <br>
@@ -33,21 +33,19 @@
 
 ---
 
-OpenMono is a coding agent that runs entirely on your hardware — no subscriptions, no data leaving your network, no per-token billing. It pairs a .NET 10 CLI with its own llama.cpp inference server, giving you a full agentic loop with 20 built-in tools, Docker sandboxing, and deep code intelligence. NVIDIA GPU, CPU, or Apple Silicon (Metal) — it auto-configures itself. You own the model, the compute, and the data.
+OpenMono is a coding agent that runs **entirely on your hardware** — no subscriptions, no data leaving your network, no per-token billing. It pairs a .NET 10 CLI with its own llama.cpp inference server, giving you a full agentic loop with **20 built-in tools**, Docker sandboxing, and deep code intelligence. NVIDIA GPU, CPU, or Apple Silicon (Metal) — **it auto-configures itself**. You own the model, the compute, and the data.
 
 ---
 
 ## Quickstart
 
-```
+```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/StartupHakk/OpenMonoAgent.ai/refs/heads/main/get-openmono.sh)
 ```
 
 Then from any project:
 
 ```bash
-cd your-project/
-
 openmono agent          # TUI mode (default)
 openmono agent --classic    # classic scrolling terminal
 ```
@@ -57,31 +55,113 @@ openmono agent --classic    # classic scrolling terminal
 </div>
 
 > [!NOTE]
-> TUI mode is the default for interactive terminals. Use `openmono  agent --classic` for CLI.
+> TUI mode is the default for interactive terminals. Use `openmono agent --classic` for CLI.
 
 → [Full command reference](docs/SETUP.md) — daily commands, setup flags, GPU/CPU options
 
 ---
 
+<!--  ── WHAT'S SHIPPING ─────────────────────────────────────── -->
+## What's shipping
+
+<table width="100%" style="border-collapse:collapse;background:#111111;border:1px solid #232323;border-radius:4px;">
+  <tr><td colspan="4" style="padding:8px 16px 6px;border-bottom:1px solid #232323;">
+    <code style="font-size:11px;color:#A3FF66;letter-spacing:0.12em;">02 · WHAT'S SHIPPING</code>
+  </td></tr>
+  <tr>
+    <td width="25%" valign="top" style="padding:14px 16px;border-right:1px solid #232323;border-top:2px solid #A3FF66;">
+      <code style="font-size:10px;color:#A3FF66;">✓ SHIPPED · June 2026</code><br/><br/>
+      <strong style="color:#A3FF66;">Web Search &amp; Scraping</strong><br/><br/>
+      <sub style="color:#6A6A62;">Private, self-hosted search via SearXNG + anti-bot scraping via Scrapling. Your queries never leave the machine.</sub><br/><br/>
+      <code style="font-size:11px;">openmono setup search</code>
+    </td>
+    <td width="25%" valign="top" style="padding:14px 16px;border-right:1px solid #232323;border-top:2px solid #A3FF66;">
+      <code style="font-size:10px;color:#A3FF66;">✓ SHIPPED · June 2026</code><br/><br/>
+      <strong style="color:#A3FF66;">Vision</strong><br/><br/>
+      <sub style="color:#6A6A62;">Attach images in chat with <code>@screenshot.png</code>. mmproj downloads automatically. PNG, JPG, GIF, WebP.</sub><br/><br/>
+      <code style="font-size:11px;">OPENMONO_VISION_ENABLED=1</code>
+    </td>
+    <td width="25%" valign="top" style="padding:14px 16px;border-right:1px solid #232323;border-top:2px solid #A3FF66;">
+      <code style="font-size:10px;color:#A3FF66;">✓ SHIPPED</code><br/><br/>
+      <strong style="color:#A3FF66;">Mobile App</strong><br/><br/>
+      <sub style="color:#6A6A62;">Control your inference server from anywhere. Full agentic loop on iOS &amp; Android — no cloud, no third party.</sub><br/><br/>
+      <a href="https://apps.apple.com/us/app/openmono-ai-coding-agent/id6766077801"><code style="font-size:11px;">App Store</code></a> &nbsp;·&nbsp; <a href="https://play.google.com/store/apps/details?id=ai.openmonoagent.app&hl=en_US"><code style="font-size:11px;">Google Play</code></a>
+    </td>
+    <td width="25%" valign="top" style="padding:14px 16px;border-top:2px solid #2A2A2A;">
+      <code style="font-size:10px;color:#4A4A44;">⧫ IN PROGRESS</code><br/><br/>
+      <strong style="color:#8A8A82;">VS Code Extension</strong><br/><br/>
+      <sub style="color:#6A6A62;">Native panel bringing the full agentic loop into VS Code &amp; Cursor. No terminal switching, no context loss.</sub><br/><br/>
+      <a href="ROADMAP.md"><code style="font-size:11px;">→ follow the roadmap</code></a>
+    </td>
+  </tr>
+</table>
+
+---
+
+<!--  ── HOW IT COMPARES ─────────────────────────────────────── -->
 ## How it compares
 
-Most coding agents are cloud products wearing an open-source label. Your prompts, your code, and your context hit someone else's servers on every keystroke. You pay per token, forever, with no ceiling.
+Most coding agents are cloud products wearing an open-source label. Your prompts, your code, and your context hit someone else's servers on every keystroke. OpenMono runs the model on your hardware — after the one-time setup, **inference costs nothing**. Your code never leaves the machine. No account. No usage dashboard. No API key.
 
-OpenMono runs the model on your hardware via llama.cpp — an RTX 3090 or a workstation NUC is all you need. After the one-time setup, inference costs nothing. Your code never leaves the machine. No account, no usage dashboard, no API key.
+<table width="100%" style="border-collapse:collapse;background:#111111;border:1px solid #232323;border-radius:4px;">
+  <tr>
+    <th width="22%" style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:0.08em;color:#4A4A44;background:#0F0F0F;border-bottom:2px solid #232323;font-family:monospace;font-weight:700;"></th>
+    <th width="26%" style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:0.08em;color:#A3FF66;background:rgba(163,255,102,0.06);border-bottom:2px solid #A3FF66;font-family:monospace;font-weight:700;">OpenMono</th>
+    <th width="26%" style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:0.08em;color:#4A4A44;background:#0F0F0F;border-bottom:2px solid #232323;font-family:monospace;font-weight:700;">Claude Code</th>
+    <th width="26%" style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:0.08em;color:#4A4A44;background:#0F0F0F;border-bottom:2px solid #232323;font-family:monospace;font-weight:700;">OpenCode</th>
+  </tr>
+  <tr>
+    <td style="padding:8px 12px;font-size:12px;color:#4A4A44;border-bottom:1px solid #1A1A1A;font-family:monospace;font-weight:600;">Inference cost</td>
+    <td style="padding:8px 12px;font-size:12px;color:#E2E2DA;background:rgba(163,255,102,0.04);border-bottom:1px solid #1A1A1A;font-weight:500;">Zero per token (local)</td>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">Per-token billing</td>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">Per-token billing</td>
+  </tr>
+  <tr>
+    <td style="padding:8px 12px;font-size:12px;color:#4A4A44;border-bottom:1px solid #1A1A1A;font-family:monospace;font-weight:600;">Data privacy</td>
+    <td style="padding:8px 12px;font-size:12px;color:#E2E2DA;background:rgba(163,255,102,0.04);border-bottom:1px solid #1A1A1A;font-weight:500;">Fully offline capable</td>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">Cloud only</td>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">Depends on provider</td>
+  </tr>
+  <tr>
+    <td style="padding:8px 12px;font-size:12px;color:#4A4A44;border-bottom:1px solid #1A1A1A;font-family:monospace;font-weight:600;">Default inference</td>
+    <td style="padding:8px 12px;font-size:12px;color:#E2E2DA;background:rgba(163,255,102,0.04);border-bottom:1px solid #1A1A1A;font-weight:500;">llama.cpp bundled, zero config</td>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">Anthropic API required</td>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">BYO provider, no bundled inference</td>
+  </tr>
+  <tr>
+    <td style="padding:8px 12px;font-size:12px;color:#4A4A44;border-bottom:1px solid #1A1A1A;font-family:monospace;font-weight:600;">Sandboxing</td>
+    <td style="padding:8px 12px;font-size:12px;color:#E2E2DA;background:rgba(163,255,102,0.04);border-bottom:1px solid #1A1A1A;font-weight:500;">Docker-native</td>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">Host process</td>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">Host process</td>
+  </tr>
+  <tr>
+    <td style="padding:8px 12px;font-size:12px;color:#4A4A44;border-bottom:1px solid #1A1A1A;font-family:monospace;font-weight:600;">Code intelligence</td>
+    <td style="padding:8px 12px;font-size:12px;color:#E2E2DA;background:rgba(163,255,102,0.04);border-bottom:1px solid #1A1A1A;font-weight:500;">LSP + Roslyn + MCP graph tools</td>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">File reads</td>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">LSP (30+ servers)</td>
+  </tr>
+  <tr>
+    <td style="padding:8px 12px;font-size:12px;color:#4A4A44;border-bottom:1px solid #1A1A1A;font-family:monospace;font-weight:600;">Extensibility</td>
+    <td style="padding:8px 12px;font-size:12px;color:#E2E2DA;background:rgba(163,255,102,0.04);border-bottom:1px solid #1A1A1A;font-weight:500;"><a href="docs/PLAYBOOKS.md">Playbooks</a> (typed, composable)</td>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">Skills (markdown)</td>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">Plugins (TS SDK)</td>
+  </tr>
+  <tr>
+    <td style="padding:8px 12px;font-size:12px;color:#4A4A44;border-bottom:1px solid #1A1A1A;font-family:monospace;font-weight:600;">MCP</td>
+    <td style="padding:8px 12px;font-size:12px;color:#E2E2DA;background:rgba(163,255,102,0.04);border-bottom:1px solid #1A1A1A;font-weight:500;">Client (stdio)</td>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">Full client</td>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">Full client</td>
+  </tr>
+  <tr>
+    <td style="padding:8px 12px;font-size:12px;color:#4A4A44;font-family:monospace;font-weight:600;">UI</td>
+    <td style="padding:8px 12px;font-size:12px;color:#E2E2DA;background:rgba(163,255,102,0.04);font-weight:500;">TUI + CLI + Mobile</td>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;">Web, Desktop, VS Code, CLI</td>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;">TUI, Desktop, Web</td>
+  </tr>
+</table>
 
-It's a full [agentic loop](docs/ARCHITECTURE.md): 20 tools, sub-agents, Docker sandboxing, LSP code intelligence, native Roslyn C# analysis, MCP integration, and [playbooks](docs/PLAYBOOKS.md). Runs at ~45 tok/s on GPU, ~20 tok/s on CPU.
+→ [Full architecture + diagram](docs/ARCHITECTURE.md) · [4 providers](docs/MODELS.md) · runs at **~45 tok/s on GPU**, ~20 tok/s on CPU
 
-
-|  | **OpenMono** | Claude Code | OpenCode |
-|--|:-------------|-------------|----------|
-| **Inference cost** | Zero per token (local) | Per-token billing | Per-token billing |
-| **Data privacy** | Fully offline capable | Cloud only | Depends on provider |
-| **Default inference** | llama.cpp bundled, zero config | Anthropic API required | BYO provider, no bundled inference |
-| **Sandboxing** | Docker-native | Host process | Host process |
-| **Code intelligence** | LSP + Roslyn + MCP graph tools | File reads | LSP (30+ servers) |
-| **Extensibility** | [Playbooks](docs/PLAYBOOKS.md) (typed, composable) | Skills (markdown) | Plugins (TS SDK) |
-| **MCP** | Client (stdio) | Full client | Full client |
-| **UI** | TUI + CLI | Web, Desktop, VS Code, CLI | TUI, Desktop, Web |
 ---
 
 ## What's inside
@@ -90,7 +170,7 @@ It's a full [agentic loop](docs/ARCHITECTURE.md): 20 tools, sub-agents, Docker s
 <tr>
 <td width="50%" valign="top">
 
-**01 · Bundled inference — zero config, zero cost**  
+<strong style="color:#A3FF66;">01</strong> · **Bundled inference — zero config, zero cost**  
 llama.cpp ships inside Docker. Installer detects your hardware and picks the right model. After setup, every token is free.
 
 `GPU` Qwen3.6-27B dense · ~60 tok/s  
@@ -102,7 +182,7 @@ llama.cpp ships inside Docker. Installer detects your hardware and picks the rig
 </td>
 <td width="50%" valign="top">
 
-**02 · Agentic loop that earns its name**  
+<strong style="color:#A3FF66;">02</strong> · **Agentic loop that earns its name**  
 25 iterations per turn. Doom-loop detection aborts if the same tool sequence repeats 3×. Checkpoints at 65% context fill, compacts at 80%. Runs until done — then stops.
 
 </td>
@@ -110,13 +190,13 @@ llama.cpp ships inside Docker. Installer detects your hardware and picks the rig
 <tr>
 <td valign="top">
 
-**03 · [20 tools](docs/ARCHITECTURE.md), 12-step pipeline**  
+<strong style="color:#A3FF66;">03</strong> · **[20 tools](docs/ARCHITECTURE.md), 12-step pipeline**  
 Every call: parse → schema validate → path sanity → plan-mode guard → capability check → cache → pre-hook → execute → post-hook → artifact store. Read-only tools run in parallel. Nothing bypasses the pipeline.
 
 </td>
 <td valign="top">
 
-**04 · 5 specialist sub-agents**  
+<strong style="color:#A3FF66;">04</strong> · **5 specialist sub-agents**  
 Isolated sessions with locked tool sets and turn budgets:
 
 `Explore` · read-only discovery · 15 turns  
@@ -130,13 +210,13 @@ Isolated sessions with locked tool sets and turn budgets:
 <tr>
 <td valign="top">
 
-**05 · Docker sandbox**  
+<strong style="color:#A3FF66;">05</strong> · **Docker sandbox**  
 Project mounts as `/workspace`. The agent reads and writes your real files — that's the blast radius. Nothing outside that mount is visible or reachable.
 
 </td>
 <td valign="top">
 
-**06 · Deep code intelligence**  
+<strong style="color:#A3FF66;">06</strong> · **Deep code intelligence**  
 Roslyn: type hierarchy, blast-radius, cross-file symbol search, callers, diagnostics — 5-min compilation cache. LSP for TypeScript, Python, Go, Rust, lazy-started on first use.
 
 Auto-detects [graphify](docs/graphify.md) (semantic concept graph, 25+ languages) and [code-review-graph](docs/code-review-graph.md) (structural call graph via MCP, ~22 tools) if installed — no config needed.
@@ -146,13 +226,13 @@ Auto-detects [graphify](docs/graphify.md) (semantic concept graph, 25+ languages
 <tr>
 <td valign="top">
 
-**07 · [Playbooks](docs/PLAYBOOKS.md)**  
+<strong style="color:#A3FF66;">07</strong> · **[Playbooks](docs/PLAYBOOKS.md)**  
 YAML workflows with typed parameters, conditional gates, and checkpoint/resume. Composable — one playbook can call another.
 
 </td>
 <td valign="top">
 
-**08 · [4 providers](docs/MODELS.md), hot-swappable**  
+<strong style="color:#A3FF66;">08</strong> · **[4 providers](docs/MODELS.md), hot-swappable**  
 Local llama.cpp is the default and fully supported. OpenAI, Anthropic, and Ollama are available but WIP — see [Models](docs/MODELS.md) for details.
 
 </td>
@@ -160,7 +240,7 @@ Local llama.cpp is the default and fully supported. OpenAI, Anthropic, and Ollam
 <tr>
 <td valign="top">
 
-**09 · Distributed inference**  
+<strong style="color:#A3FF66;">09</strong> · **Distributed inference**  
 Agent on your laptop, inference on a separate GPU machine. No port forwarding — tunnel is established outbound from the inference box. Free relay at [app.openmonoagent.ai](https://app.openmonoagent.ai).
 
 → [Dual-box setup guide](docs/SETUP.md#dual-box-setup)
@@ -168,7 +248,7 @@ Agent on your laptop, inference on a separate GPU machine. No port forwarding �
 </td>
 <td valign="top">
 
-**10 · Vision**  
+<strong style="color:#A3FF66;">10</strong> · **Vision**  
 Attach images in chat with `@screenshot.png` or ask the agent to read any image file. The multimodal projector (mmproj) is downloaded automatically at setup. Supported formats: PNG, JPG, GIF, WebP. Large images are auto-resized to fit within VRAM budget. Enable with `OPENMONO_VISION_ENABLED=1`.
 
 → [Vision setup & usage](docs/SETUP.md#vision)
@@ -183,83 +263,112 @@ Attach images in chat with `@screenshot.png` or ask the agent to read any image 
 
 ---
 
+<!--  ── SUPPORTED HARDWARE ──────────────────────────────────── -->
 ## Supported Hardware
 
-### Linux — NVIDIA GPU / CPU
+<table width="100%" style="border-collapse:collapse;margin-bottom:8px;">
+  <tr><td style="padding:0 0 6px;">
+    <code style="font-size:11px;color:#A3FF66;letter-spacing:0.1em;">LINUX — NVIDIA GPU / CPU</code>
+  </td></tr>
+</table>
 
-| VRAM / RAM | Model | Accuracy | Speed |
-|------------|-------|----------|-------|
-| GPU 24 GB+ | Qwen3.6-27B-Q4_K_M | Full | ~45–70 tok/s |
-| GPU 16 GB | Qwen3.6-27B-UD-IQ3_XXS | Lower | ~20–42 tok/s (4060 Ti → 4080) |
-| GPU 12 GB | Qwen3.5-9B-Q4_K_M | Lower | ~38–40 tok/s (RTX 3060) |
-| CPU 24 GB RAM | Qwen3.6-35B-A3B-UD-Q4_K_XL | Full | ~17–20 tok/s |
+<table width="100%" style="border-collapse:collapse;background:#111111;border:1px solid #232323;border-radius:4px;margin-bottom:16px;">
+  <tr style="background:#0F0F0F;">
+    <th style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:0.08em;color:#4A4A44;border-bottom:1px solid #232323;font-family:monospace;font-weight:700;">VRAM / RAM</th>
+    <th style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:0.08em;color:#4A4A44;border-bottom:1px solid #232323;font-family:monospace;font-weight:700;">Model</th>
+    <th style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:0.08em;color:#4A4A44;border-bottom:1px solid #232323;font-family:monospace;font-weight:700;">Accuracy</th>
+    <th style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:0.08em;color:#4A4A44;border-bottom:1px solid #232323;font-family:monospace;font-weight:700;">Speed</th>
+  </tr>
+  <tr>
+    <td style="padding:8px 12px;font-size:12px;color:#A3FF66;border-bottom:1px solid #1A1A1A;font-family:monospace;">GPU 24 GB+</td>
+    <td style="padding:8px 12px;font-size:12px;color:#8A8A82;border-bottom:1px solid #1A1A1A;font-family:monospace;">Qwen3.6-27B-Q4_K_M</td>
+    <td style="padding:8px 12px;font-size:12px;color:#A3FF66;border-bottom:1px solid #1A1A1A;">Full</td>
+    <td style="padding:8px 12px;font-size:12px;color:#8A8A82;border-bottom:1px solid #1A1A1A;">~45–70 tok/s</td>
+  </tr>
+  <tr>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;font-family:monospace;">GPU 16 GB</td>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;font-family:monospace;">Qwen3.6-27B-UD-IQ3_XXS</td>
+    <td style="padding:8px 12px;font-size:12px;color:#E8A838;border-bottom:1px solid #1A1A1A;">Lower</td>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">~20–42 tok/s (4060 Ti → 4080)</td>
+  </tr>
+  <tr>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;font-family:monospace;">GPU 12 GB</td>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;font-family:monospace;">Qwen3.5-9B-Q4_K_M</td>
+    <td style="padding:8px 12px;font-size:12px;color:#E8A838;border-bottom:1px solid #1A1A1A;">Lower</td>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">~38–40 tok/s (RTX 3060)</td>
+  </tr>
+  <tr>
+    <td style="padding:8px 12px;font-size:12px;color:#A3FF66;font-family:monospace;">CPU 24 GB RAM</td>
+    <td style="padding:8px 12px;font-size:12px;color:#8A8A82;font-family:monospace;">Qwen3.6-35B-A3B-UD-Q4_K_XL</td>
+    <td style="padding:8px 12px;font-size:12px;color:#A3FF66;">Full</td>
+    <td style="padding:8px 12px;font-size:12px;color:#8A8A82;">~17–20 tok/s</td>
+  </tr>
+</table>
 
-### macOS — Apple Silicon (Metal)
+<table width="100%" style="border-collapse:collapse;margin-bottom:8px;">
+  <tr><td style="padding:0 0 6px;">
+    <code style="font-size:11px;color:#A3FF66;letter-spacing:0.1em;">macOS — APPLE SILICON (METAL)</code>
+  </td></tr>
+</table>
 
-Inference runs natively on the Metal GPU via llama.cpp — no Docker needed for the model. Model tier is picked from the unified memory size.
-
-| Unified memory | Model | Accuracy | Context (vision on) | Speed | Status |
-|----------------|-------|----------|---------------------|-------|--------|
-| 64 GB+ | Qwen3.6-35B-A3B-UD-Q4_K_XL | Full | 192k (168k) | ~45–48 tok/s (M5 Pro) | ✅ Recommended / tested |
-| 32 GB | Qwen3.5-9B-Q4_K_M | Lower | 64k (48k) | ~22–27 tok/s (M1 Max) | ⚠️ Not encouraged |
-| 16 GB | Qwen3.5-9B-Q4_K_M | Lower | 16k (12k) | ~12–16 tok/s (M4) | ⚠️ Not encouraged |
+<table width="100%" style="border-collapse:collapse;background:#111111;border:1px solid #232323;border-radius:4px;margin-bottom:12px;">
+  <tr style="background:#0F0F0F;">
+    <th style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:0.08em;color:#4A4A44;border-bottom:1px solid #232323;font-family:monospace;font-weight:700;">Unified memory</th>
+    <th style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:0.08em;color:#4A4A44;border-bottom:1px solid #232323;font-family:monospace;font-weight:700;">Model</th>
+    <th style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:0.08em;color:#4A4A44;border-bottom:1px solid #232323;font-family:monospace;font-weight:700;">Context</th>
+    <th style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:0.08em;color:#4A4A44;border-bottom:1px solid #232323;font-family:monospace;font-weight:700;">Speed</th>
+    <th style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:0.08em;color:#4A4A44;border-bottom:1px solid #232323;font-family:monospace;font-weight:700;">Status</th>
+  </tr>
+  <tr>
+    <td style="padding:8px 12px;font-size:12px;color:#A3FF66;border-bottom:1px solid #1A1A1A;font-family:monospace;">64 GB+</td>
+    <td style="padding:8px 12px;font-size:12px;color:#8A8A82;border-bottom:1px solid #1A1A1A;font-family:monospace;">Qwen3.6-35B-A3B-UD-Q4_K_XL</td>
+    <td style="padding:8px 12px;font-size:12px;color:#8A8A82;border-bottom:1px solid #1A1A1A;">192k (168k w/ vision)</td>
+    <td style="padding:8px 12px;font-size:12px;color:#8A8A82;border-bottom:1px solid #1A1A1A;">~45–48 tok/s (M5 Pro)</td>
+    <td style="padding:8px 12px;font-size:12px;color:#A3FF66;border-bottom:1px solid #1A1A1A;">✓ Recommended</td>
+  </tr>
+  <tr>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;font-family:monospace;">32 GB</td>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;font-family:monospace;">Qwen3.5-9B-Q4_K_M</td>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">64k (48k)</td>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;border-bottom:1px solid #1A1A1A;">~22–27 tok/s (M1 Max)</td>
+    <td style="padding:8px 12px;font-size:12px;color:#E8A838;border-bottom:1px solid #1A1A1A;">⚠ Not encouraged</td>
+  </tr>
+  <tr>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;font-family:monospace;">16 GB</td>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;font-family:monospace;">Qwen3.5-9B-Q4_K_M</td>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;">16k (12k)</td>
+    <td style="padding:8px 12px;font-size:12px;color:#6A6A62;">~12–16 tok/s (M4)</td>
+    <td style="padding:8px 12px;font-size:12px;color:#E8A838;">⚠ Not encouraged</td>
+  </tr>
+</table>
 
 > [!NOTE]
 > The installer detects your hardware and selects the right model automatically — no config needed. On Linux, 12 GB and 16 GB GPU cards are supported but run lower accuracy models; for best results use a 24 GB card. Linux requires Ubuntu 26.04 LTS (recommended) or 25.10.
 >
-> On **macOS**, the full and inference roles require Apple Silicon (M1+). **64 GB+ unified memory is the recommended, tested configuration** — full-accuracy 35B model at the full 192k context. Less than 64 GB is not encouraged — the installer falls back to a smaller model with a much tighter context window. Intel Macs are supported in **agent-only** mode (connect to a separate inference box). macOS 14+ (Sonoma/Sequoia) recommended.
+> On **macOS**, the full and inference roles require Apple Silicon (M1+). **64 GB+ unified memory is the recommended, tested configuration** — full-accuracy 35B model at the full 192k context. Less than 64 GB is not encouraged. Intel Macs are supported in **agent-only** mode. macOS 14+ (Sonoma/Sequoia) recommended.
 
-## Architecture
+---
 
-A .NET 10 CLI driving a local llama.cpp inference server over HTTP, everything sandboxed in Docker. The agent streams tokens, dispatches tool calls through a 12-step pipeline, and loops until done.
-
-→ [Full architecture + diagram](docs/ARCHITECTURE.md)
-
-## Configuration
-
-Settings load from `~/.openmono/settings.json` (user-level) or `.openmono/settings.json` (project-level) — reference, providers, permissions, MCP servers
-
-→ [Full configuration reference](docs/CONFIG.md)
-
-## Commands & shortcuts
-
-14 slash commands including `/think`, `/undo`, `/resume`, and `/export`. Full keyboard shortcut reference for TUI mode.
-
-→ [Commands, slash commands & keyboard shortcuts](docs/SETUP.md)
-
-## Web services (optional)
-
-Back the agent's `WebSearch` and `WebFetch` tools with self-hosted services that
-run entirely in Docker on the inference box, behind a single Caddy gateway (one
-tunnelled port, shared `LLAMA_API_KEY` auth):
-
-```bash
-openmono setup search     # SearXNG  — private web search
-openmono setup scraper    # Scrapling — anti-bot scraping (Cloudflare/CAPTCHA bypass)
-```
-
-Both are opt-in (you're also prompted during `openmono setup`). When a service
-isn't installed, the tools fall back to their built-in DuckDuckGo / direct-fetch
-behaviour.
-
-→ [Inference-side web services](docs/ARCHITECTURE.md)
-
+<!--  ── DOCS ────────────────────────────────────────────────── -->
 ## Docs
 
-- [Roadmap](ROADMAP.md)
-- [Setup & commands](docs/SETUP.md) — daily commands, TUI vs classic, flags
-- **VS Code / Cursor** — chat UI over the ACP server. Start the agent in your project folder with `--acp-only --acp-port 7475` (Windows: run `./install.ps1 -Run` from this folder), then open the [OpenMono Agent](https://marketplace.visualstudio.com/publishers/StartupHakk) panel.
-- [Architecture](docs/ARCHITECTURE.md) — .NET CLI + llama.cpp + Docker, full diagram
-- [Models & reasoning mode](docs/MODELS.md)
-- [Configuration](docs/CONFIG.md) — settings.json, providers, permissions, MCP servers
-- [Tools](docs/ARCHITECTURE.md)
-- [Playbooks](docs/PLAYBOOKS.md)
-- [graphify](docs/graphify.md) — semantic code graph, 25+ languages
-- [code-review-graph](docs/code-review-graph.md) — structural call graph via MCP
-- [Contributing](CONTRIBUTING.md)
+| | |
+|---|---|
+| [Roadmap](ROADMAP.md) | What's next |
+| [Setup & commands](docs/SETUP.md) | Daily commands, TUI vs classic, flags |
+| [Architecture](docs/ARCHITECTURE.md) | .NET CLI + llama.cpp + Docker, full diagram |
+| [Models & reasoning](docs/MODELS.md) | Model tiers, reasoning mode, provider config |
+| [Configuration](docs/CONFIG.md) | settings.json, providers, permissions, MCP servers |
+| [Playbooks](docs/PLAYBOOKS.md) | YAML workflows, typed params, checkpoint/resume |
+| [graphify](docs/graphify.md) | Semantic code graph, 25+ languages |
+| [code-review-graph](docs/code-review-graph.md) | Structural call graph via MCP |
+| **VS Code / Cursor** | Start with `--acp-only --acp-port 7475`, then open the [OpenMono Agent](https://marketplace.visualstudio.com/publishers/StartupHakk) panel |
+| [Contributing](CONTRIBUTING.md) | How to contribute |
 
 > [!NOTE]
 > OpenMono is in **Public Beta**. Early access is open, and we're shipping updates fast. Try it out and tell us what you'd like to see next.
+
+---
 
 ## Contributing
 
