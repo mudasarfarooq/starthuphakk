@@ -11,6 +11,11 @@ public sealed class PlaybookTool : ToolBase
 
     public override bool IsDeferred => false;
 
+    // Available in both Plan and Build modes, but gated by whether the playbook requires write tools.
+    // If a playbook needs write tools in Plan mode, user is prompted to switch to Build mode.
+    // This mirrors ImplementPlan's behavior — the tool is available but may require a mode switch.
+    public override bool IsReadOnly => true;
+
     private readonly PlaybookRegistry _registry;
     private readonly PlaybookExecutor _executor;
 
@@ -41,6 +46,23 @@ public sealed class PlaybookTool : ToolBase
             return ToolResult.Error($"Playbook '{name}' not found. Available: {available}");
         }
 
+        // Check if playbook needs non-read-only tools and we're in Plan mode
+        if (context.Session.Meta.PlanMode && PlaybookRequiresWriteTools(playbook, context))
+        {
+            // Ask user if they want to switch to Build mode
+            var userResponse = await context.AskUser(
+                $"The playbook '{playbook.Name}' requires Build mode (write tools). Switch to Build mode? [yes/no]",
+                ct);
+
+            if (userResponse?.Equals("yes", StringComparison.OrdinalIgnoreCase) != true)
+            {
+                return ToolResult.Error($"Playbook '{name}' requires Build mode. User declined to switch.");
+            }
+
+            // Switch to Build mode
+            context.Session.Meta.PlanMode = false;
+        }
+
         var parameters = ParseArguments(arguments, playbook);
 
         PlaybookState? state = null;
@@ -52,6 +74,30 @@ public sealed class PlaybookTool : ToolBase
 
         var result = await _executor.ExecuteAsync(playbook, parameters, state, ct);
         return ToolResult.Success(result);
+    }
+
+    private bool PlaybookRequiresWriteTools(PlaybookDefinition playbook, ToolContext context)
+    {
+        // Check if the playbook's allowed tools include any non-read-only tools
+        var allowedToolNames = playbook.AllowedTools;
+
+        // If playbook allows all tools (*), check if there are any write tools available
+        if (allowedToolNames.Contains("*"))
+        {
+            return context.ToolRegistry.All.Any(t => !t.IsReadOnly);
+        }
+
+        // Otherwise, check if any of the playbook's allowed tools are non-read-only
+        foreach (var toolName in allowedToolNames)
+        {
+            var tool = context.ToolRegistry.Resolve(toolName);
+            if (tool is not null && !tool.IsReadOnly)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static Dictionary<string, object> ParseArguments(string args, PlaybookDefinition playbook)
