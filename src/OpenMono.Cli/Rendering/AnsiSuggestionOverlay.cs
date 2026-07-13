@@ -206,37 +206,43 @@ internal sealed class AnsiSuggestionOverlay(AppConfig config, AnsiPainter painte
             _atScroll = _atSearchIdx - AtMaxDisplay + 1;
         _atScroll = Math.Clamp(_atScroll, 0, Math.Max(0, _atResults.Count - AtMaxDisplay));
 
+        var overlay = new System.Text.StringBuilder();
         for (var i = 0; i < AtMaxDisplay; i++)
         {
             var row = convH - AtMaxDisplay + i + 1;
             if (row < 1) continue;
             var idx = _atScroll + i;
-            painter.MoveTo(1, row);
+            overlay.Append($"{AnsiPainter.E}[{row};1H");
             if (idx < _atResults.Count)
             {
                 var rel      = _atResults[idx];
                 var fileName = Path.GetFileName(rel);
                 var dir      = Path.GetDirectoryName(rel)?.Replace('\\', '/') ?? "";
                 if (idx == _atSearchIdx)
-                    painter.Write(
+                    overlay.Append(
                         $"{AnsiPainter.BgSugg}{AnsiPainter.Fc}{AnsiPainter.B} @{fileName,-20}{AnsiPainter.R}" +
                         $"{AnsiPainter.BgSugg}{AnsiPainter.Fk} {dir}{AnsiPainter.R}" +
                         $"{AnsiPainter.BgSugg}{AnsiPainter.Pad(Math.Max(0, mainW - 23 - AnsiPainter.VisLen(dir)))}{AnsiPainter.R}");
                 else
-                    painter.Write(
+                    overlay.Append(
                         $"{AnsiPainter.BgMain}{AnsiPainter.Fk}  @{fileName,-20} {dir}{AnsiPainter.R}" +
                         $"{AnsiPainter.BgMain}{AnsiPainter.Pad(Math.Max(0, mainW - 24 - AnsiPainter.VisLen(dir)))}{AnsiPainter.R}");
             }
             else
             {
-                painter.Write($"{AnsiPainter.BgMain}{new string(' ', mainW)}{AnsiPainter.R}");
+                overlay.Append($"{AnsiPainter.BgMain}{new string(' ', mainW)}{AnsiPainter.R}");
             }
         }
+
+        var overlayStr = overlay.ToString();
+        painter.SetAtOverlay(overlayStr);
+        painter.Write(overlayStr);
         AnsiPainter.Flush();
     }
 
     internal void HideAtSuggestions(string bgText)
     {
+        painter.ClearAtOverlay();
         painter.Sz();
         var layout = painter.ComputeLayout(bgText);
         var mainW  = layout.MainW;
@@ -253,6 +259,7 @@ internal sealed class AnsiSuggestionOverlay(AppConfig config, AnsiPainter painte
         _atResults.Clear();
         _atSearchIdx = -1;
         AnsiPainter.Flush();
+        painter.InvalidateFrameBuffer();
         painter.PaintConvThrottled(force: true);
     }
 }

@@ -110,6 +110,9 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
     private volatile bool _laneActive;
     private string _laneOverlay = "";
 
+    private volatile bool _atOverlayActive;
+    private string _atOverlay = "";
+
     private readonly List<string> _cachedLines = [];
     private int _cachedMsgCount;
     private int _cachedWidth;
@@ -508,6 +511,23 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
     private void AppendLaneOverlay(StringBuilder sb)
     {
         if (_laneActive) sb.Append(_laneOverlay);
+    }
+
+    internal void SetAtOverlay(string overlay)
+    {
+        _atOverlay = overlay;
+        _atOverlayActive = true;
+    }
+
+    internal void ClearAtOverlay()
+    {
+        _atOverlayActive = false;
+        _atOverlay = "";
+    }
+
+    private void AppendAtOverlay(StringBuilder sb)
+    {
+        if (_atOverlayActive) sb.Append(_atOverlay);
     }
 
     internal void ShowCtrlCBanner()
@@ -1075,6 +1095,7 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
 
             sb.Append(R);
             AppendLaneOverlay(sb);
+            AppendAtOverlay(sb);
             AppendInputCursor(sb, mainW);
             W(sb.ToString());
             Flush();
@@ -1105,6 +1126,7 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
         if (_contextWarningPct > 0) PaintContextWarning(sb);
         sb.Append(R);
         AppendLaneOverlay(sb);
+        AppendAtOverlay(sb);
         AppendInputCursor(sb, mainW);
         W(sb.ToString());
         Flush();
