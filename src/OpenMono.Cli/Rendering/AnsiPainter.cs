@@ -121,6 +121,13 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
     private int _scrollOffset;
     private bool _autoScroll = true;
 
+    private int _selAnchorRow = -1;
+    private int _selCursorRow = -1;
+    private bool _selDragged;
+    private string[] _rowPlainText = [];
+    private string? _toast;
+    private DateTime _toastExpiry;
+
     private Func<string> _getBgInput = () => "";
     private Func<bool> _isTurnActive = () => false;
 
@@ -323,6 +330,75 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
     {
         _scrollOffset = 0;
         _autoScroll = true;
+    }
+
+    internal void MouseSelectStart(int screenRow)
+    {
+        if (screenRow < 0 || screenRow >= ConvHeight)
+        {
+            ClearSelection();
+            return;
+        }
+        _selAnchorRow = screenRow;
+        _selCursorRow = screenRow;
+        _selDragged = false;
+        PaintConvThrottled(force: true);
+    }
+
+    internal void MouseSelectExtend(int screenRow)
+    {
+        if (_selAnchorRow < 0) return;
+        _selCursorRow = Math.Clamp(screenRow, 0, ConvHeight - 1);
+        _selDragged = true;
+        PaintConvThrottled(force: true);
+    }
+
+    internal string? MouseSelectCommit()
+    {
+        if (_selAnchorRow < 0 || !_selDragged)
+        {
+            ClearSelection();
+            return null;
+        }
+
+        var lo = Math.Min(_selAnchorRow, _selCursorRow);
+        var hi = Math.Max(_selAnchorRow, _selCursorRow);
+        var picked = new List<string>();
+        for (var r = lo; r <= hi && r < _rowPlainText.Length; r++)
+            picked.Add(_rowPlainText[r] ?? "");
+
+        while (picked.Count > 0 && picked[^1].Trim().Length == 0)
+            picked.RemoveAt(picked.Count - 1);
+        while (picked.Count > 0 && picked[0].Trim().Length == 0)
+            picked.RemoveAt(0);
+
+        ClearSelection();
+        var text = string.Join("\n", picked.Select(l => l.TrimEnd()));
+        return text.Trim().Length == 0 ? null : text;
+    }
+
+    private void ClearSelection()
+    {
+        _selAnchorRow = -1;
+        _selCursorRow = -1;
+        _selDragged = false;
+        PaintConvThrottled(force: true);
+    }
+
+    internal void ShowToast(string message)
+    {
+        _toast = message;
+        _toastExpiry = DateTime.UtcNow.AddMilliseconds(1800);
+        Paint();
+        var expiry = _toastExpiry;
+        _ = Task.Delay(1900).ContinueWith(_ =>
+        {
+            if (_toast is not null && DateTime.UtcNow >= expiry)
+            {
+                _toast = null;
+                Paint();
+            }
+        });
     }
 
     internal void Paint()
@@ -1266,13 +1342,23 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
             _prevFrameWidth    = w;
             _prevFrameHeight   = h;
         }
+        if (_rowPlainText.Length < safeH)
+            _rowPlainText = new string[safeH];
+
+        var selLo = _selAnchorRow < 0 ? -1 : Math.Min(_selAnchorRow, _selCursorRow);
+        var selHi = _selAnchorRow < 0 ? -1 : Math.Max(_selAnchorRow, _selCursorRow);
 
         for (var row = 0; row < h; row++)
         {
             var idx = start + row;
             string newContent;
             var safeW = Math.Max(0, w);
-            if (idx < lines.Count)
+            var plain = idx < lines.Count ? AnsiRe.Replace(lines[idx], "") : "";
+            if (row < _rowPlainText.Length) _rowPlainText[row] = plain;
+
+            if (selLo >= 0 && row >= selLo && row <= selHi)
+                newContent = $"{BgMain}{E}[7m {PadR(plain, Math.Max(0, safeW - 1))}{E}[27m{R}";
+            else if (idx < lines.Count)
                 newContent = $"{BgMain} {PadR(lines[idx], Math.Max(0, safeW - 1))}{R}";
             else
                 newContent = $"{BgMain}{new string(' ', safeW)}{R}";
@@ -1398,6 +1484,16 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
 
     private void PaintStatusBar(StringBuilder sb)
     {
+        if (_toast is not null && DateTime.UtcNow < _toastExpiry)
+        {
+            var toast = $" {Fg}✓ {_toast}{R}{BgStatus}";
+            sb.Append($"{E}[?7l{E}[{_th};1H{E}[2K{BgStatus}");
+            sb.Append(toast);
+            sb.Append(new string(' ', Math.Max(0, _tw - VisLen(toast))));
+            sb.Append($"{R}{E}[?7h");
+            return;
+        }
+
         sb.Append($"{E}[?7l{E}[{_th};1H{E}[2K{BgStatus}");
         var tracker = session.Meta.TokenTracker;
         var tok     = tracker?.LastPromptTokens ?? 0;

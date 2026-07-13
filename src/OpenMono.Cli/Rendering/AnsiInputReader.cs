@@ -48,13 +48,33 @@ internal sealed class AnsiInputReader(
                 if ((ch == 'M' || ch == 'm') && s.Length > 3 && s[0] == '[' && s[1] == '<')
                 {
                     var body  = s.Substring(2, s.Length - 3);
-                    var semi  = body.IndexOf(';');
-                    var cbStr = semi >= 0 ? body[..semi] : body;
-                    if (int.TryParse(cbStr, out var cb) && (cb & 0x40) != 0)
+                    var parts = body.Split(';');
+                    if (parts.Length >= 3 &&
+                        int.TryParse(parts[0], out var cb) &&
+                        int.TryParse(parts[2], out var cy))
                     {
-                        var dir = cb & 0x3;
-                        if (dir == 0) return (+2, null, 0, 0);
-                        if (dir == 1) return (-2, null, 0, 0);
+                        if ((cb & 0x40) != 0)
+                        {
+                            var dir = cb & 0x3;
+                            if (dir == 0) return (+2, null, 0, 0);
+                            if (dir == 1) return (-2, null, 0, 0);
+                            return (0, null, 0, 0);
+                        }
+
+                        var screenRow = cy - 1;
+                        if (ch == 'M' && (cb & 0x20) == 0 && (cb & 0x03) == 0)
+                            painter.MouseSelectStart(screenRow);
+                        else if (ch == 'M' && (cb & 0x20) != 0)
+                            painter.MouseSelectExtend(screenRow);
+                        else if (ch == 'm')
+                        {
+                            var sel = painter.MouseSelectCommit();
+                            if (!string.IsNullOrEmpty(sel))
+                            {
+                                WriteClipboard(sel);
+                                painter.ShowToast("Copied to clipboard");
+                            }
+                        }
                     }
                     return (0, null, 0, 0);
                 }
@@ -761,6 +781,25 @@ internal sealed class AnsiInputReader(
             }
         }
         finally { Console.TreatControlCAsInput = prev; }
+    }
+
+    private static void WriteClipboard(string text)
+    {
+        try
+        {
+            ProcessStartInfo psi;
+            if (File.Exists("/usr/bin/pbcopy"))
+                psi = new("pbcopy") { RedirectStandardInput = true, UseShellExecute = false };
+            else
+                psi = new("xclip", "-selection clipboard") { RedirectStandardInput = true, UseShellExecute = false };
+
+            var p = Process.Start(psi);
+            if (p is null) return;
+            p.StandardInput.Write(text);
+            p.StandardInput.Close();
+            p.WaitForExit(2000);
+        }
+        catch { }
     }
 
     private static string? ReadClipboard()
