@@ -410,7 +410,7 @@ static async Task RunAgentAsync(string? endpoint, string? model, string? workdir
 
 
             try { acpHost?.StopAsync(CancellationToken.None).GetAwaiter().GetResult(); }
-            catch { }
+            catch (Exception ex) { Log.Debug($"ACP host stop on exit failed: {ex.Message}"); }
             ProcessWatchdog.ScheduleHardKill();
             ansiTui?.SafeExit();
             Environment.Exit(0);
@@ -604,9 +604,9 @@ static async Task RunAgentAsync(string? endpoint, string? model, string? workdir
         {
             await sessionManager.SaveAsync(session, CancellationToken.None);
         }
-        catch
+        catch (Exception ex)
         {
-
+            Log.Warn($"Session autosave failed (turn loop): {ex.Message}");
         }
     }
 
@@ -630,7 +630,7 @@ static async Task<bool> IsServerWarmAsync(string endpoint)
             return true;
         }
     }
-    catch { }
+    catch (Exception ex) { Log.Debug($"Server warmth probe failed: {ex.Message}"); }
     return false;
 }
 
@@ -957,8 +957,8 @@ static async Task AutoDetectCodeGraphAsync(AppConfig config, IRenderer renderer)
 
         renderer.WriteInfo("code-review-graph detected — registering as MCP server.");
     }
-    catch
+    catch (Exception ex)
     {
-
+        Log.Debug($"code-review-graph autodetect failed: {ex.Message}");
     }
 }

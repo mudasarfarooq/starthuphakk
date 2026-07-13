@@ -169,6 +169,49 @@ public class PermissionEngineTests
         input.PromptCount.Should().Be(2, "a one-time Deny must prompt again on the next write");
     }
 
+    [Fact]
+    public async Task CheckCapabilities_AllowAll_DoesNotBypassBlockedBinary()
+    {
+        var input = new ScriptedInputReader(PermissionResponse.AllowAll);
+        var engine = new PermissionEngine(new AppConfig(), new TerminalRenderer(), input);
+
+        await engine.CheckCapabilitiesAsync(
+            "Bash", [new FileWriteCap("/tmp/openmono-test/a.txt", "create")], CancellationToken.None);
+
+        var dangerous = await engine.CheckCapabilitiesAsync(
+            "Bash", [new ProcessExecCap("sudo", [])], CancellationToken.None);
+
+        dangerous.Allowed.Should().BeFalse("allow-all must not bypass the blocked-binary safety floor");
+        dangerous.Reason.Should().Contain("sudo");
+    }
+
+    [Fact]
+    public async Task CheckCapabilities_FileRead_ProtectedFileInWorkspace_IsNotAutoAllowed()
+    {
+        var workspace = Path.Combine(Path.GetTempPath(), "omperm-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(workspace);
+        try
+        {
+            var config = new AppConfig { WorkingDirectory = workspace };
+            var input = new ScriptedInputReader(PermissionResponse.Deny);
+            var engine = new PermissionEngine(config, new TerminalRenderer(), input);
+
+            var normal = await engine.CheckCapabilitiesAsync(
+                "FileRead", [new FileReadCap(Path.Combine(workspace, "src.txt"))], CancellationToken.None);
+            normal.Allowed.Should().BeTrue("a normal file inside the workspace must still auto-allow");
+            input.PromptCount.Should().Be(0, "a normal workspace read must not prompt");
+
+            var secret = await engine.CheckCapabilitiesAsync(
+                "FileRead", [new FileReadCap(Path.Combine(workspace, ".env"))], CancellationToken.None);
+            secret.Allowed.Should().BeFalse();
+            input.PromptCount.Should().Be(1, "a protected file must prompt instead of being silently auto-read");
+        }
+        finally
+        {
+            try { Directory.Delete(workspace, recursive: true); } catch (IOException) { }
+        }
+    }
+
     private static PermissionEngine CreateEngine() =>
         new(new AppConfig(), new TerminalRenderer(), new TerminalRenderer());
 
