@@ -129,6 +129,7 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
     private string[] _rowPlainText = [];
     private string? _toast;
     private DateTime _toastExpiry;
+    private int _inputCursor;
 
     private Func<string> _getBgInput = () => "";
     private Func<bool> _isTurnActive = () => false;
@@ -1074,6 +1075,7 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
 
             sb.Append(R);
             AppendLaneOverlay(sb);
+            AppendInputCursor(sb, mainW);
             W(sb.ToString());
             Flush();
         }
@@ -1103,6 +1105,7 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
         if (_contextWarningPct > 0) PaintContextWarning(sb);
         sb.Append(R);
         AppendLaneOverlay(sb);
+        AppendInputCursor(sb, mainW);
         W(sb.ToString());
         Flush();
         _paintInProgress = false;
@@ -1131,6 +1134,7 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
     {
         try
         {
+            _inputCursor = cursor;
             Sz();
             var mainW       = Math.Max(1, _tw - _sideW);
             var wrapW       = InputWrapWidth(mainW);
@@ -1184,6 +1188,9 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
                 for (var row = oldFirstContent - 1; row < firstContentRow - 1; row++)
                     sb.Append($"{E}[{Math.Max(1, row + 1)};1H{BgMain}{new string(' ', mainW)}{R}");
                 sb.Append($"{E}[{Math.Max(1, firstContentRow - 1)};1H{divider}");
+
+                _prevConvFrame = null;
+                if (_paintActive) _paintChannel.Writer.TryWrite(new PaintRequest(PaintKind.Full));
             }
             else if (prevRows > 0 && contentRows > prevRows)
             {
@@ -1202,7 +1209,7 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
                 sb.Append(R);
             }
 
-            sb.Append($"{E}[{Math.Max(1, firstContentRow + cursorRow)};{3 + cursorCol}H");
+            sb.Append($"{E}[{Math.Max(1, firstContentRow + cursorRow)};{3 + cursorCol}H{E}[?25h");
             W(sb.ToString());
             Flush();
         }
@@ -1210,6 +1217,46 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
         {
             Log.Error("DoDrawInputText failed", ex);
         }
+    }
+
+    private void AppendInputCursor(StringBuilder sb, int mainW)
+    {
+        var text        = _getBgInput();
+        var wrapW       = InputWrapWidth(mainW);
+        var wrapped     = WrapInput(text, wrapW);
+        var contentRows = Math.Clamp(wrapped.Length, 1, 5);
+        var firstContentRow = Math.Max(1, _th - contentRows - 2);
+        var cursor      = _inputCursor;
+
+        int cursorRow, cursorCol;
+        if (wrapped.Length == 1 && wrapped[0].EndsWith("Copied]"))
+        {
+            cursorRow = 0;
+            cursorCol = wrapped[0].Length;
+        }
+        else if (wrapped.Length > 1 && wrapped[0].EndsWith("Copied]"))
+        {
+            var lastNl = text.LastIndexOf('\n');
+            if (cursor > lastNl)
+            {
+                var tailCursor = cursor - lastNl - 1;
+                cursorRow = 1 + (tailCursor / wrapW);
+                cursorCol = tailCursor % wrapW;
+                if (cursorRow >= contentRows)
+                {
+                    cursorRow = contentRows - 1;
+                    cursorCol = wrapped[cursorRow].Length;
+                }
+            }
+            else { cursorRow = 0; cursorCol = wrapped[0].Length; }
+        }
+        else
+        {
+            (cursorRow, cursorCol) = ComputeInputCursorPos(text, cursor, wrapW);
+            cursorRow = Math.Min(cursorRow, contentRows - 1);
+        }
+
+        sb.Append($"{E}[{Math.Max(1, firstContentRow + cursorRow)};{3 + cursorCol}H{E}[?25h");
     }
 
     private static (int row, int col) ComputeInputCursorPos(string text, int cursor, int wrapW)

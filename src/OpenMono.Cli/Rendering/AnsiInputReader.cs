@@ -162,7 +162,8 @@ internal sealed class AnsiInputReader(
 
     internal CancellationTokenSource? CurrentTurnCts { get; set; }
 
-    internal string BgInputText => _bgInputBuf.ToString();
+    private Func<string>? _liveMainInput;
+    internal string BgInputText => _liveMainInput?.Invoke() ?? _bgInputBuf.ToString();
     internal bool IsBackgroundInputActive => _bgInputActive;
 
     internal void StartBackgroundInput()
@@ -283,6 +284,13 @@ internal sealed class AnsiInputReader(
             if (k.Key == ConsoleKey.Enter)
             {
                 var text = _bgInputBuf.ToString().Trim();
+                if (text is "exit" or "quit" or "q")
+                {
+                    CurrentTurnCts?.Cancel();
+                    _bgInputBuf.Clear();
+                    if (!painter.PaintInProgress) painter.DrawInputText("", 0);
+                    continue;
+                }
                 if (text.Length > 0)
                     painter.EnqueueUserMessage(text);
                 _bgInputBuf.Clear();
@@ -444,6 +452,7 @@ internal sealed class AnsiInputReader(
             _bgInputBuf.Clear();
         }
         var cur = buf.Length;
+        _liveMainInput = () => buf.ToString();
 
         painter.DrawInputText(buf.ToString(), cur);
         AnsiPainter.Flush();
@@ -746,6 +755,7 @@ internal sealed class AnsiInputReader(
         }
         finally
         {
+            _liveMainInput = null;
             Console.TreatControlCAsInput = prev;
             painter.Write($"{AnsiPainter.E}[?2004l");
             AnsiPainter.Flush();

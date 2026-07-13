@@ -436,9 +436,11 @@ static async Task RunAgentAsync(string? endpoint, string? model, string? workdir
 
         if (input.Trim() is "exit" or "quit" or "q")
         {
-            ProcessWatchdog.ScheduleHardKill();
-            ansiTui?.SafeExit();
-            Environment.Exit(0);
+            if (currentTurnCts is { } activeCts && !activeCts.IsCancellationRequested)
+                activeCts.Cancel();
+            else
+                renderer.WriteInfo("Nothing is running. Type /quit to exit OpenMono.");
+            continue;
         }
 
         if (input.StartsWith('/'))
