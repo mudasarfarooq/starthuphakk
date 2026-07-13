@@ -1128,6 +1128,8 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
         var currentText = _getBgInput();
         var convH       = _th - InputContentRows(currentText, mainW) - 4;
         PaintConvArea(sb, mainW, convH);
+        PaintInputBox(sb, mainW, convH);
+        PaintTabBar(sb, mainW, convH + InputContentRows(currentText, mainW) + 2);
         PaintSidebar(sb, mainW, _th - 1);
         PaintStatusBar(sb);
         if (_ctrlCBannerVisible) PaintCtrlCBanner(sb);
@@ -1428,11 +1430,7 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
 
         var safeH = Math.Max(1, h);
         if (_prevConvFrame is null || _prevConvFrame.Length < safeH)
-        {
-            _prevConvFrame     = new string[safeH];
-            _prevFrameWidth    = w;
-            _prevFrameHeight   = h;
-        }
+            _prevConvFrame = new string[safeH];
         if (_rowPlainText.Length < safeH)
             _rowPlainText = new string[safeH];
 
@@ -1467,6 +1465,23 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
                 _prevConvFrame[row] = newContent;
             }
         }
+
+        if (_prevFrameHeight > h)
+        {
+            var blankLine = $"{BgMain}{new string(' ', Math.Max(0, w))}{R}";
+            for (var row = h; row < _prevFrameHeight && row < _prevConvFrame.Length; row++)
+            {
+                if (_prevConvFrame[row] != blankLine)
+                {
+                    sb.Append($"{E}[{row + 1};1H");
+                    sb.Append(blankLine);
+                    _prevConvFrame[row] = blankLine;
+                }
+            }
+        }
+
+        _prevFrameWidth  = w;
+        _prevFrameHeight = h;
 
         if (lines.Count > extraStart)
             lines.RemoveRange(extraStart, lines.Count - extraStart);
