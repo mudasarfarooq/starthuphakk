@@ -166,12 +166,17 @@ internal sealed class AnsiInputReader(
     internal string BgInputText => _liveMainInput?.Invoke() ?? _bgInputBuf.ToString();
     internal bool IsBackgroundInputActive => _bgInputActive;
 
-    internal void StartBackgroundInput()
+    internal void StartBackgroundInput(string? preserveText = null)
     {
         StopBackgroundInput();
-        _bgInputBuf.Clear();
+        if (preserveText is not null)
+        {
+            _bgInputBuf.Clear();
+            _bgInputBuf.Append(preserveText);
+        }
         _bgInputActive = true;
-        painter.DrawInputText("", 0);
+        var displayText = _bgInputBuf.ToString();
+        painter.DrawInputText(displayText, displayText.Length);
         painter.Write($"{AnsiPainter.E}[?25h");
         painter.Write($"{AnsiPainter.E}[?2004h");
         AnsiPainter.Flush();
@@ -286,8 +291,9 @@ internal sealed class AnsiInputReader(
                 var comp = suggestions.FilteredCommands[idx].Name;
                 _bgInputBuf.Clear();
                 _bgInputBuf.Append(comp);
-                suggestions.UpdateSuggestions(comp, ref sugVis);
-                if (!painter.PaintInProgress) painter.DrawInputText(_bgInputBuf.ToString(), _bgInputBuf.Length);
+                suggestions.HideSuggestions(comp);
+                sugVis = false;
+                painter.DrawInputText(_bgInputBuf.ToString(), _bgInputBuf.Length);
                 continue;
             }
 
@@ -365,6 +371,7 @@ internal sealed class AnsiInputReader(
 
     public Task<string> AskUserAsync(string question, CancellationToken ct)
     {
+        var saved = _bgInputBuf.ToString();
         painter.AddMessage(new AnsiPainter.Msg("sys", $"? {question}"));
         StopBackgroundInput();
         painter.PaintActionLane(
@@ -378,12 +385,13 @@ internal sealed class AnsiInputReader(
         painter.AddMessage(new AnsiPainter.Msg("user", ans));
         painter.PaintActionLane("", "", "");
         painter.Paint();
-        StartBackgroundInput();
+        StartBackgroundInput(saved);
         return Task.FromResult(ans);
     }
 
     public Task<PermissionResponse> AskPermissionAsync(string tool, string summary, CancellationToken ct)
     {
+        var saved = _bgInputBuf.ToString();
         StopBackgroundInput();
         painter.AddMessage(new AnsiPainter.Msg("sys",
             $"{AnsiPainter.Fy}▶ Permission: {tool}{AnsiPainter.R}\n{summary}"));
@@ -408,12 +416,13 @@ internal sealed class AnsiInputReader(
         try { response = ReadPermissionKey(); }
         finally { painter.ClearLane(); }
         painter.Paint();
-        StartBackgroundInput();
+        StartBackgroundInput(saved);
         return Task.FromResult(response);
     }
 
     public Task<bool> RequestPlaybookApprovalAsync(PlaybookToolPlan plan, CancellationToken ct)
     {
+        var saved = _bgInputBuf.ToString();
         StopBackgroundInput();
         painter.AddMessage(new AnsiPainter.Msg("sys",
             $"{AnsiPainter.Fy}▶ Playbook approval: {plan.PlaybookName}{AnsiPainter.R}"));
@@ -455,7 +464,7 @@ internal sealed class AnsiInputReader(
         finally { painter.ClearLane(); }
 
         painter.Paint();
-        StartBackgroundInput();
+        StartBackgroundInput(saved);
         return Task.FromResult(approved);
     }
 

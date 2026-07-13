@@ -115,12 +115,13 @@ internal sealed class AnsiSuggestionOverlay(AppConfig config, AnsiPainter painte
             _suggestionScroll = _suggestionIdx - max + 1;
         _suggestionScroll = Math.Clamp(_suggestionScroll, 0, Math.Max(0, _filteredCmds.Count - max));
 
+        var sb = new System.Text.StringBuilder();
+
         for (var i = 0; i < _lastDrawnCount - max; i++)
         {
             var row = convH - _lastDrawnCount + i + 1;
             if (row < 1) continue;
-            painter.MoveTo(1, row);
-            painter.Write($"{AnsiPainter.BgMain}{new string(' ', mainW)}{AnsiPainter.R}");
+            sb.Append($"{AnsiPainter.E}[{row};1H{AnsiPainter.BgMain}{new string(' ', mainW)}{AnsiPainter.R}");
         }
 
         for (var i = 0; i < max; i++)
@@ -129,23 +130,28 @@ internal sealed class AnsiSuggestionOverlay(AppConfig config, AnsiPainter painte
             if (row < 1) continue;
             var idx = _suggestionScroll + i;
             var (name, desc) = _filteredCmds[idx];
-            painter.MoveTo(1, row);
+            sb.Append($"{AnsiPainter.E}[{row};1H");
             if (idx == _suggestionIdx)
-                painter.Write(
+                sb.Append(
                     $"{AnsiPainter.BgSugg}{AnsiPainter.Fg}{AnsiPainter.B} {name,-14}{AnsiPainter.R}" +
                     $"{AnsiPainter.BgSugg}{AnsiPainter.Fk} {desc}{AnsiPainter.R}" +
                     $"{AnsiPainter.BgSugg}{AnsiPainter.Pad(Math.Max(0, mainW - 16 - AnsiPainter.VisLen(desc)))}{AnsiPainter.R}");
             else
-                painter.Write(
+                sb.Append(
                     $"{AnsiPainter.BgMain}{AnsiPainter.Fk}  {name,-14} {desc}{AnsiPainter.R}" +
                     $"{AnsiPainter.BgMain}{AnsiPainter.Pad(Math.Max(0, mainW - 17 - AnsiPainter.VisLen(desc)))}{AnsiPainter.R}");
         }
         _lastDrawnCount = max;
+
+        var overlayStr = sb.ToString();
+        painter.SetSuggestionOverlay(overlayStr);
+        painter.Write(overlayStr);
         AnsiPainter.Flush();
     }
 
     internal void HideSuggestions(string bgText)
     {
+        painter.ClearSuggestionOverlay();
         painter.Sz();
         var layout = painter.ComputeLayout(bgText);
         var mainW  = layout.MainW;
