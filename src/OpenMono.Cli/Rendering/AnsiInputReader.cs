@@ -51,6 +51,7 @@ internal sealed class AnsiInputReader(
                     var parts = body.Split(';');
                     if (parts.Length >= 3 &&
                         int.TryParse(parts[0], out var cb) &&
+                        int.TryParse(parts[1], out var cx) &&
                         int.TryParse(parts[2], out var cy))
                     {
                         if ((cb & 0x40) != 0)
@@ -62,17 +63,19 @@ internal sealed class AnsiInputReader(
                         }
 
                         var screenRow = cy - 1;
+                        var screenCol = cx - 2;
                         if (ch == 'M' && (cb & 0x20) == 0 && (cb & 0x03) == 0)
-                            painter.MouseSelectStart(screenRow);
+                            painter.MouseSelectStart(screenRow, screenCol);
                         else if (ch == 'M' && (cb & 0x20) != 0)
-                            painter.MouseSelectExtend(screenRow);
+                            painter.MouseSelectExtend(screenRow, screenCol);
                         else if (ch == 'm')
                         {
                             var sel = painter.MouseSelectCommit();
                             if (!string.IsNullOrEmpty(sel))
                             {
                                 WriteClipboard(sel);
-                                painter.ShowToast("Copied to clipboard");
+                                var n = sel.Length;
+                                painter.ShowToast($"Copied {n} character{(n == 1 ? "" : "s")} to clipboard");
                             }
                         }
                     }

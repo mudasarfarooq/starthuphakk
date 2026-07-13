@@ -122,7 +122,9 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
     private bool _autoScroll = true;
 
     private int _selAnchorRow = -1;
+    private int _selAnchorCol;
     private int _selCursorRow = -1;
+    private int _selCursorCol;
     private bool _selDragged;
     private string[] _rowPlainText = [];
     private string? _toast;
@@ -332,7 +334,7 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
         _autoScroll = true;
     }
 
-    internal void MouseSelectStart(int screenRow)
+    internal void MouseSelectStart(int screenRow, int screenCol)
     {
         if (screenRow < 0 || screenRow >= ConvHeight)
         {
@@ -340,17 +342,29 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
             return;
         }
         _selAnchorRow = screenRow;
+        _selAnchorCol = Math.Max(0, screenCol);
         _selCursorRow = screenRow;
+        _selCursorCol = Math.Max(0, screenCol);
         _selDragged = false;
         PaintConvThrottled(force: true);
     }
 
-    internal void MouseSelectExtend(int screenRow)
+    internal void MouseSelectExtend(int screenRow, int screenCol)
     {
         if (_selAnchorRow < 0) return;
         _selCursorRow = Math.Clamp(screenRow, 0, ConvHeight - 1);
+        _selCursorCol = Math.Max(0, screenCol);
         _selDragged = true;
         PaintConvThrottled(force: true);
+    }
+
+    private (int sr, int sc, int er, int ec) NormalizedSelection()
+    {
+        var anchorFirst = _selAnchorRow < _selCursorRow ||
+            (_selAnchorRow == _selCursorRow && _selAnchorCol <= _selCursorCol);
+        return anchorFirst
+            ? (_selAnchorRow, _selAnchorCol, _selCursorRow, _selCursorCol)
+            : (_selCursorRow, _selCursorCol, _selAnchorRow, _selAnchorCol);
     }
 
     internal string? MouseSelectCommit()
@@ -361,20 +375,20 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
             return null;
         }
 
-        var lo = Math.Min(_selAnchorRow, _selCursorRow);
-        var hi = Math.Max(_selAnchorRow, _selCursorRow);
-        var picked = new List<string>();
-        for (var r = lo; r <= hi && r < _rowPlainText.Length; r++)
-            picked.Add(_rowPlainText[r] ?? "");
-
-        while (picked.Count > 0 && picked[^1].Trim().Length == 0)
-            picked.RemoveAt(picked.Count - 1);
-        while (picked.Count > 0 && picked[0].Trim().Length == 0)
-            picked.RemoveAt(0);
+        var (sr, sc, er, ec) = NormalizedSelection();
+        var sb = new StringBuilder();
+        for (var r = sr; r <= er; r++)
+        {
+            var line = r < _rowPlainText.Length ? _rowPlainText[r] ?? "" : "";
+            var from = r == sr ? Math.Clamp(sc, 0, line.Length) : 0;
+            var to   = r == er ? Math.Clamp(ec, 0, line.Length) : line.Length;
+            if (to > from) sb.Append(line, from, to - from);
+            if (r < er) sb.Append('\n');
+        }
 
         ClearSelection();
-        var text = string.Join("\n", picked.Select(l => l.TrimEnd()));
-        return text.Trim().Length == 0 ? null : text;
+        var text = sb.ToString();
+        return text.Length == 0 ? null : text;
     }
 
     private void ClearSelection()
@@ -388,10 +402,10 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
     internal void ShowToast(string message)
     {
         _toast = message;
-        _toastExpiry = DateTime.UtcNow.AddMilliseconds(1800);
+        _toastExpiry = DateTime.UtcNow.AddMilliseconds(2200);
         Paint();
         var expiry = _toastExpiry;
-        _ = Task.Delay(1900).ContinueWith(_ =>
+        _ = Task.Delay(2300).ContinueWith(_ =>
         {
             if (_toast is not null && DateTime.UtcNow >= expiry)
             {
@@ -1345,8 +1359,8 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
         if (_rowPlainText.Length < safeH)
             _rowPlainText = new string[safeH];
 
-        var selLo = _selAnchorRow < 0 ? -1 : Math.Min(_selAnchorRow, _selCursorRow);
-        var selHi = _selAnchorRow < 0 ? -1 : Math.Max(_selAnchorRow, _selCursorRow);
+        var selActive = _selAnchorRow >= 0;
+        var (ssr, ssc, ser, sec) = selActive ? NormalizedSelection() : (-1, 0, -1, 0);
 
         for (var row = 0; row < h; row++)
         {
@@ -1356,8 +1370,14 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
             var plain = idx < lines.Count ? AnsiRe.Replace(lines[idx], "") : "";
             if (row < _rowPlainText.Length) _rowPlainText[row] = plain;
 
-            if (selLo >= 0 && row >= selLo && row <= selHi)
-                newContent = $"{BgMain}{E}[7m {PadR(plain, Math.Max(0, safeW - 1))}{E}[27m{R}";
+            if (selActive && row >= ssr && row <= ser)
+            {
+                var from = row == ssr ? Math.Clamp(ssc, 0, plain.Length) : 0;
+                var to   = row == ser ? Math.Clamp(sec, 0, plain.Length) : plain.Length;
+                if (to < from) (from, to) = (to, from);
+                var content = $"{plain[..from]}{E}[7m{plain[from..to]}{E}[27m{plain[to..]}";
+                newContent = $"{BgMain} {PadR(content, Math.Max(0, safeW - 1))}{R}";
+            }
             else if (idx < lines.Count)
                 newContent = $"{BgMain} {PadR(lines[idx], Math.Max(0, safeW - 1))}{R}";
             else
@@ -1486,7 +1506,7 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
     {
         if (_toast is not null && DateTime.UtcNow < _toastExpiry)
         {
-            var toast = $" {Fg}✓ {_toast}{R}{BgStatus}";
+            var toast = $" {B}{Fbb}✓ {_toast}{R}{BgStatus}";
             sb.Append($"{E}[?7l{E}[{_th};1H{E}[2K{BgStatus}");
             sb.Append(toast);
             sb.Append(new string(' ', Math.Max(0, _tw - VisLen(toast))));
