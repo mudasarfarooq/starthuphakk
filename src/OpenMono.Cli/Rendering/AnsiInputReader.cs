@@ -190,6 +190,8 @@ internal sealed class AnsiInputReader(
 
     private void BgInputLoop()
     {
+        var sugVis = false;
+
         while (_bgInputActive)
         {
             var result = terminal.TryReadKey();
@@ -205,12 +207,14 @@ internal sealed class AnsiInputReader(
                     var (scroll, paste, _, _) = TryReadEscapeSequence();
                     if (paste is not null)
                     {
+                        if (sugVis) { suggestions.HideSuggestions(_bgInputBuf.ToString()); sugVis = false; }
                         _bgInputBuf.Append(paste.Replace("\r\n", "\n").Replace('\r', '\n'));
                         if (!painter.PaintInProgress) painter.DrawInputText(_bgInputBuf.ToString(), _bgInputBuf.Length);
                     }
                     else if (scroll != 0) { ApplyScroll(scroll); }
                     continue;
                 }
+                if (sugVis) { suggestions.HideSuggestions(_bgInputBuf.ToString()); sugVis = false; continue; }
                 CurrentTurnCts?.Cancel();
                 continue;
             }
@@ -233,6 +237,7 @@ internal sealed class AnsiInputReader(
                 }
                 else
                 {
+                    if (sugVis) { suggestions.HideSuggestions(_bgInputBuf.ToString()); sugVis = false; }
                     CurrentTurnCts?.Cancel();
                     painter.ShowCtrlCBanner();
                 }
@@ -241,6 +246,7 @@ internal sealed class AnsiInputReader(
 
             if (k.Key == ConsoleKey.U && k.Modifiers.HasFlag(ConsoleModifiers.Control))
             {
+                if (sugVis) { suggestions.HideSuggestions(_bgInputBuf.ToString()); sugVis = false; }
                 _bgInputBuf.Clear();
                 if (!painter.PaintInProgress) painter.DrawInputText("", 0);
                 continue;
@@ -256,22 +262,10 @@ internal sealed class AnsiInputReader(
                     while (end > 0 && s[end - 1] != ' ') end--;
                     _bgInputBuf.Clear();
                     _bgInputBuf.Append(s[..end]);
-                    if (!painter.PaintInProgress) painter.DrawInputText(_bgInputBuf.ToString(), _bgInputBuf.Length);
+                    var ws = _bgInputBuf.ToString();
+                    suggestions.UpdateSuggestions(ws, ref sugVis);
+                    if (!painter.PaintInProgress) painter.DrawInputText(ws, _bgInputBuf.Length);
                 }
-                continue;
-            }
-
-            if (k.Key == ConsoleKey.PageUp)
-            {
-                painter.ScrollPageUp();
-                painter.Paint();
-                continue;
-            }
-
-            if (k.Key == ConsoleKey.PageDown)
-            {
-                painter.ScrollPageDown();
-                painter.Paint();
                 continue;
             }
 
@@ -281,10 +275,37 @@ internal sealed class AnsiInputReader(
             if (k.Key == ConsoleKey.End && k.Modifiers.HasFlag(ConsoleModifiers.Control))
             { painter.ScrollToBottom(); painter.Paint(); continue; }
 
+            if (k.Key == ConsoleKey.UpArrow && sugVis && suggestions.FilteredCommands.Count > 0)
+            { suggestions.MoveSuggestionSelection(-1); suggestions.DrawSuggestions(_bgInputBuf.ToString()); continue; }
+            if (k.Key == ConsoleKey.DownArrow && sugVis && suggestions.FilteredCommands.Count > 0)
+            { suggestions.MoveSuggestionSelection(+1); suggestions.DrawSuggestions(_bgInputBuf.ToString()); continue; }
+
+            if (k.Key == ConsoleKey.Tab && sugVis && suggestions.FilteredCommands.Count > 0)
+            {
+                var idx  = suggestions.SuggestionIndex >= 0 ? suggestions.SuggestionIndex : 0;
+                var comp = suggestions.FilteredCommands[idx].Name;
+                _bgInputBuf.Clear();
+                _bgInputBuf.Append(comp);
+                suggestions.UpdateSuggestions(comp, ref sugVis);
+                if (!painter.PaintInProgress) painter.DrawInputText(_bgInputBuf.ToString(), _bgInputBuf.Length);
+                continue;
+            }
+
             if (k.Key == ConsoleKey.Enter)
             {
                 var text = _bgInputBuf.ToString().Trim();
-                if (text is "exit" or "quit" or "q")
+
+                if (sugVis && suggestions.SuggestionIndex >= 0 &&
+                    suggestions.SuggestionIndex < suggestions.FilteredCommands.Count)
+                {
+                    text = suggestions.FilteredCommands[suggestions.SuggestionIndex].Name;
+                    _bgInputBuf.Clear();
+                    _bgInputBuf.Append(text);
+                }
+                suggestions.HideSuggestions(_bgInputBuf.ToString());
+                sugVis = false;
+
+                if (text is "exit" or "quit" or "q" or "/quit" or "/exit" or "/q")
                 {
                     CurrentTurnCts?.Cancel();
                     _bgInputBuf.Clear();
@@ -303,7 +324,9 @@ internal sealed class AnsiInputReader(
                 if (_bgInputBuf.Length > 0)
                 {
                     _bgInputBuf.Remove(_bgInputBuf.Length - 1, 1);
-                    if (!painter.PaintInProgress) painter.DrawInputText(_bgInputBuf.ToString(), _bgInputBuf.Length);
+                    var bs = _bgInputBuf.ToString();
+                    suggestions.UpdateSuggestions(bs, ref sugVis);
+                    if (!painter.PaintInProgress) painter.DrawInputText(bs, _bgInputBuf.Length);
                 }
                 continue;
             }
@@ -313,6 +336,7 @@ internal sealed class AnsiInputReader(
                 var p = ReadClipboard();
                 if (p is not null)
                 {
+                    if (sugVis) { suggestions.HideSuggestions(_bgInputBuf.ToString()); sugVis = false; }
                     _bgInputBuf.Append(p.Replace("\r\n", "\n").Replace('\r', '\n'));
                     if (!painter.PaintInProgress) painter.DrawInputText(_bgInputBuf.ToString(), _bgInputBuf.Length);
                 }
@@ -325,7 +349,9 @@ internal sealed class AnsiInputReader(
             if (k.KeyChar != '\0' && !char.IsControl(k.KeyChar))
             {
                 _bgInputBuf.Append(k.KeyChar);
-                if (!painter.PaintInProgress) painter.DrawInputText(_bgInputBuf.ToString(), _bgInputBuf.Length);
+                var cs = _bgInputBuf.ToString();
+                suggestions.UpdateSuggestions(cs, ref sugVis);
+                if (!painter.PaintInProgress) painter.DrawInputText(cs, _bgInputBuf.Length);
             }
         }
     }
@@ -592,6 +618,14 @@ internal sealed class AnsiInputReader(
 
                     if (!interactive && (painter.IsStreaming || CurrentTurnCts is not null))
                     {
+                        if (text.Trim() is "/quit" or "/exit" or "/q" or "quit" or "exit" or "q")
+                        {
+                            CurrentTurnCts?.Cancel();
+                            buf.Clear(); cur = 0;
+                            painter.Write($"{AnsiPainter.E}[?25h");
+                            painter.DrawInputText("", 0);
+                            continue;
+                        }
                         painter.EnqueueUserMessage(text);
                         buf.Clear(); cur = 0;
                         painter.Write($"{AnsiPainter.E}[?25h");
