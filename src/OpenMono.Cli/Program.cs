@@ -150,7 +150,11 @@ static async Task RunAgentAsync(string? endpoint, string? model, string? workdir
     using var llm = providerRegistry.CreateClient(config);
 
     Action<string> debugCallback = msg => renderer.WriteDebug(msg);
-    if (llm is OpenAiCompatClient openAiClient) openAiClient.OnDebug = debugCallback;
+    if (llm is OpenAiCompatClient openAiClient)
+    {
+        openAiClient.OnDebug = debugCallback;
+        openAiClient.OnModelReported = m => config.Llm.Model = m;
+    }
     if (llm is AnthropicClient anthropicClient) anthropicClient.OnDebug = debugCallback;
 
     var fileHistory = new FileHistory(config);
