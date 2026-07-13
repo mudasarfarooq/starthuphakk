@@ -646,6 +646,8 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
     {
         ClearThinking();
         _streaming = true;
+        _autoScroll = true;
+        _scrollOffset = 0;
         lock (_streamLock) { _streamBuf.Clear(); }
         _chunks = 0;
         _lastTokSec = 0;
@@ -721,6 +723,8 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
         {
             Footer = footer
         });
+        _autoScroll = true;
+        _scrollOffset = 0;
         Paint();
     }
 
@@ -730,10 +734,12 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
     {
         var key = agentLabel ?? MainAgentKey;
         var stream = _thinkingStreams.GetOrAdd(key, _ => new ThinkingStream());
+        var wasActive = stream.Mode is "Thinking" or "Waiting";
         lock (stream.BufferLock) { stream.Buffer.Append(text); }
         stream.Mode = "Thinking";
         stream.Collapsed = false;
         System.Threading.Interlocked.Exchange(ref stream.LastActivityTick, DateTime.UtcNow.Ticks);
+        if (!wasActive) { _autoScroll = true; _scrollOffset = 0; }
         EnsureThinkingTimer();
         PaintConvThrottled(force: false);
     }
@@ -763,6 +769,8 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
         {
             stream.Mode = "Waiting";
             stream.Frame = 0;
+            _autoScroll = true;
+            _scrollOffset = 0;
         }
         EnsureThinkingTimer();
         PaintConvThrottled(force: true);
