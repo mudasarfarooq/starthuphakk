@@ -558,6 +558,7 @@ internal sealed partial class AnsiPainter(AppConfig config, SessionState session
         {
             _ctrlCBannerVisible = false;
             _ctrlCBannerTimer = null;
+            InvalidateFrameBuffer();
             PaintConvThrottled(force: true);
         }, null, dueTime: 2000, period: System.Threading.Timeout.Infinite);
         PaintConvThrottled(force: true);

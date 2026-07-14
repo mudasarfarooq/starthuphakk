@@ -513,6 +513,7 @@ internal sealed class AnsiInputReader(
                 if (ctrlCBannerShown)
                 {
                     ctrlCBannerShown = false;
+                    painter.InvalidateFrameBuffer();
                     painter.PaintConvThrottled(force: true);
                 }
 
