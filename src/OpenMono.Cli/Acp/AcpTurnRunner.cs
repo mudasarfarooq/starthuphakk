@@ -71,6 +71,70 @@ public sealed class AcpTurnRunner : IAcpEventSink
 
     public async Task RunUserMessageAsync(string userText, CancellationToken ct)
     {
+        var trimmed = userText.TrimStart();
+        if (trimmed.StartsWith('/') && await TryHandleSlashCommandAsync(trimmed.Trim(), ct))
+            return;
+        await SubmitUserMessageAsync(userText, ct);
+    }
+
+    private static string SlashHelpText() =>
+        "**Commands**\n" +
+        "- `/plan [task]` — enter Plan mode (read-only); with a task, propose a plan for it\n" +
+        "- `/build` — switch to Build mode (make changes)\n" +
+        "- `/mode` — toggle Plan / Build\n" +
+        "- `/help` — show this list\n\n" +
+        "Tip: use the toolbar for Clear, Resume, Undo/Redo, and Stop.";
+
+    private async Task<bool> TryHandleSlashCommandAsync(string text, CancellationToken ct)
+    {
+        var space = text.IndexOf(' ');
+        var cmd = (space < 0 ? text : text[..space]).ToLowerInvariant();
+        var args = space < 0 ? "" : text[(space + 1)..].Trim();
+
+        switch (cmd)
+        {
+            case "/help":
+                await OnTextDeltaAsync(SlashHelpText());
+                await _writer.WriteEventAsync("done", new { });
+                return true;
+
+            case "/mode":
+                _acpSession.PlanMode = !_acpSession.PlanMode;
+                await OnModeChangedAsync(_acpSession.PlanMode ? "plan" : "build");
+                await OnTextDeltaAsync(_acpSession.PlanMode
+                    ? "Switched to **Plan mode** — read-only. I'll investigate and propose a plan before changes."
+                    : "Switched to **Build mode** — I can make changes now.");
+                await _writer.WriteEventAsync("done", new { });
+                return true;
+
+            case "/build":
+                _acpSession.PlanMode = false;
+                await OnModeChangedAsync("build");
+                await OnTextDeltaAsync("Switched to **Build mode** — I can make changes now.");
+                await _writer.WriteEventAsync("done", new { });
+                return true;
+
+            case "/plan":
+                _acpSession.PlanMode = true;
+                await OnModeChangedAsync("plan");
+                if (args.Length > 0)
+                {
+                    await SubmitUserMessageAsync(ModeInstructions.PlanTask(args), ct);
+                }
+                else
+                {
+                    await OnTextDeltaAsync("Switched to **Plan mode** — read-only. Tell me what to plan and I'll propose a plan for your approval.");
+                    await _writer.WriteEventAsync("done", new { });
+                }
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    private async Task SubmitUserMessageAsync(string userText, CancellationToken ct)
+    {
         // Ensure system prompt is set on first message
         if (_acpSession.Messages.Count == 0 || _acpSession.Messages[0].Role != MessageRole.System)
         {

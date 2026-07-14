@@ -120,6 +120,11 @@ internal static class ModeInstructions
     internal const string SwitchedToBuild =
         "[The user just switched to BUILD mode. You now have full tool access — proceed with any changes.]";
 
+    internal static string PlanTask(string task) =>
+        $"{task}\n\n" +
+        "[Plan this task: investigate as needed, then call CreatePlan to present a numbered " +
+        "implementation plan for approval. Do not implement anything yet.]";
+
     // ── User picked "keep planning" and gave feedback: force a revised plan, not a chat reply ──
     internal static string RefinePlan(string feedback) =>
         $"Revise the plan based on this feedback:\n{feedback}\n\n" +
