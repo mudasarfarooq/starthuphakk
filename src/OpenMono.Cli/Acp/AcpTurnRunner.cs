@@ -82,8 +82,9 @@ public sealed class AcpTurnRunner : IAcpEventSink
         "- `/plan [task]` — enter Plan mode (read-only); with a task, propose a plan for it\n" +
         "- `/build` — switch to Build mode (make changes)\n" +
         "- `/mode` — toggle Plan / Build\n" +
+        "- `/think` — toggle step-by-step reasoning\n" +
         "- `/help` — show this list\n\n" +
-        "Tip: use the toolbar for Clear, Resume, Undo/Redo, and Stop.";
+        "Also available: `/clear`, `/sessions`, `/undo`, `/redo`, `/stop`.";
 
     private async Task<bool> TryHandleSlashCommandAsync(string text, CancellationToken ct)
     {
@@ -111,6 +112,14 @@ public sealed class AcpTurnRunner : IAcpEventSink
                 _acpSession.PlanMode = false;
                 await OnModeChangedAsync("build");
                 await OnTextDeltaAsync("Switched to **Build mode** — I can make changes now.");
+                await _writer.WriteEventAsync("done", new { });
+                return true;
+
+            case "/think":
+                _acpSession.State.Meta.ThinkingEnabled = !_acpSession.State.Meta.ThinkingEnabled;
+                await OnTextDeltaAsync(_acpSession.State.Meta.ThinkingEnabled
+                    ? "**Thinking mode ON** — I'll reason step-by-step before responding (uses extra context)."
+                    : "**Thinking mode OFF** — I'll respond directly.");
                 await _writer.WriteEventAsync("done", new { });
                 return true;
 
