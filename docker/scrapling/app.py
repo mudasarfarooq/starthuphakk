@@ -10,6 +10,10 @@ POST /scrape  { "url": "...", "render": false, "headless": true,
   -> { "status": 200, "url": "...", "engine": "fetcher"|"stealthy",
        "format": "markdown", "truncated": false, "content": "..." }
 """
+import utils.clients
+import utils.http_session
+import utils.transport
+import utils.session
 import logging
 from typing import Optional
 

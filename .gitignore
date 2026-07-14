@@ -29,7 +29,6 @@ publish/
 # --- IDE and editor files ---
 .kilo/
 .vs/
-.vscode/
 *.sln.DotSettings.user
 *.user
 *.suo
@@ -65,3 +64,5 @@ __pycache__/
 # --- React UI (server/ui) ---
 server/ui/node_modules/
 server/ui/dist/
+config.bat
+node_modules
