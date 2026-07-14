@@ -532,6 +532,15 @@ static async Task RunAgentAsync(string? endpoint, string? model, string? workdir
             }
             if (choice is "auto" or "gated")
             {
+                // One-time gate before any work begins: implementation never starts silently.
+                renderer.WriteInfo("Start implementing this plan? (y/n)");
+                var confirm = InputSanitizer.SanitizeUserInput(renderer.ReadInput()).Trim().ToLowerInvariant();
+                if (confirm is not ("y" or "yes"))
+                {
+                    renderer.WriteInfo("Held off — still in Plan mode. Approve again (1 = auto / 2 = ask) when ready, or keep refining.");
+                    continue;
+                }
+
                 var (_, autoApprove, instruction) = ModeInstructions.ResolvePlanDecision(choice);
                 session.Meta.PlanMode = false;
                 session.Meta.AutoApproveWrites = autoApprove;
@@ -605,6 +614,9 @@ static async Task RunAgentAsync(string? endpoint, string? model, string? workdir
         {
             currentTurnCts = null;
             if (ansiTui is not null) ansiTui.CurrentTurnCts = null;
+            // Scope plan auto-approve to the single implementation turn — never let it persist
+            // across the session (that would silently disable all future permission prompts).
+            session.Meta.AutoApproveWrites = false;
         }
 
         try
