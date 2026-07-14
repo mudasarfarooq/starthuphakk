@@ -584,6 +584,7 @@ public sealed class ConversationLoop : IDisposable
                     else
                     {
                         // TUI: show the plan + options; the user types 1/2/3 to choose.
+                        _output.WriteInfo("📋 Plan ready — review below:");
                         _output.WriteMarkdown(planText);
                         _output.WriteInfo($"\n{ModeInstructions.ProceedOptions}\n\n(reply 1/2/3, or keep typing to refine the plan)");
                     }

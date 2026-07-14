@@ -372,6 +372,7 @@ static async Task RunAgentAsync(string? endpoint, string? model, string? workdir
 
     commands.Register(new RetryCommand(loop));
     commands.Register(new CompactCommand(compactor));
+    commands.Register(new PlanCommand(loop));
 
     renderer.EnableCommandSuggestions(commands);
 
